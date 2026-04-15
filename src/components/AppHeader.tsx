@@ -41,7 +41,6 @@ import { EcosystemPortal } from '@/components/common/EcosystemPortal';
 import { WalletSidebar } from '@/components/overlays/WalletSidebar';
 import Logo from '@/components/common/Logo';
 import { getEcosystemUrl } from '@/constants/ecosystem';
-import { useTheme } from '@/components/ThemeProvider';
 import { AppwriteService } from '@/lib/appwrite';
 import { IdentityAvatar, IdentityName, computeIdentityFlags } from './common/IdentityBadge';
 
@@ -51,10 +50,6 @@ interface AppHeaderProps {
 
 export default function AppHeader({ className }: AppHeaderProps) {
   const { user, isAuthenticated, logout } = useAuth();
-  const { } = useTheme();
-  const { } = useNotifications();
-  const { } = useIsland();
-  const { } = useOverlay();
   const [anchorElAccount, setAnchorElAccount] = useState<null | HTMLElement>(null);
   
   const router = useRouter();
@@ -134,7 +129,7 @@ export default function AppHeader({ className }: AppHeaderProps) {
       try {
         const status = await AppwriteService.getGlobalProfileStatus(user.$id);
         if (!mounted) return;
-        setProfileRecord(status?.profile || null);
+        setProfileRecord(status.profile || null);
       } catch (error) {
         console.warn('[Note Header] Failed to load profile record:', error);
       }

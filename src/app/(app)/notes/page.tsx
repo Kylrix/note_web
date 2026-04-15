@@ -789,7 +789,7 @@ export default function NotesPage() {
               </Box>
             )}
             
-            {hasMore && !isInitialLoading && !hasSearchResults && (
+            {allNotes.length > paginatedNotes.length && (
               <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
                 <Button variant="outlined" onClick={loadMore} {...sidebarIgnoreProps}>
                   Load More
@@ -810,7 +810,7 @@ export default function NotesPage() {
               onPageChange={goToPage}
               onNextPage={nextPage}
               onPreviousPage={previousPage}
-              totalCount={hasSearchResults ? totalCount : (allNotes || []).length}
+              totalCount={hasSearchResults ? totalCount : allNotes.length}
               pageSize={paginationConfig.pageSize}
               compact={false}
             />

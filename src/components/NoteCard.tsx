@@ -39,7 +39,7 @@ export default function NoteCard({
   title,
   updatedAt,
   isEncrypted,
-  sharedWith,
+  sharedWith = [],
   onDelete,
   onShare
 }: NoteCardProps) {
@@ -262,4 +262,3 @@ export default function NoteCard({
     </Card>
   );
 }
-

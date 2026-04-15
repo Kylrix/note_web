@@ -280,9 +280,7 @@ export default function NoteEditorPage() {
             color="error"
             fullWidth
             onClick={() => {
-              if (note?.$id) {
-                handleDelete(note.$id);
-              }
+              handleDelete(note.$id);
               setShowDeleteConfirm(false);
             }}
             disabled={isDeleting}

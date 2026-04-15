@@ -44,6 +44,7 @@ export default function TagsPage() {
   const [editingTag, setEditingTag] = useState<Tags | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedTag, setSelectedTag] = useState<Tags | null>(null);
+  const selectedTagId = selectedTag ? selectedTag.$id : null;
 
   // Form state
   const [formData, setFormData] = useState({
@@ -132,7 +133,7 @@ export default function TagsPage() {
       setEditingTag(null);
       await fetchTags();
     } catch (err: any) {
-       setError((err as Error)?.message || 'Failed to save tag');
+       setError((err as Error).message || 'Failed to save tag');
     } finally {
       setIsCreating(false);
     }
@@ -229,13 +230,13 @@ export default function TagsPage() {
                   key={tag.$id}
                   onClick={() => setSelectedTag(tag)}
                   sx={{
-                    bgcolor: selectedTag?.$id === tag.$id ? '#1C1A18' : '#161412',
+                    bgcolor: selectedTagId === tag.$id ? '#1C1A18' : '#161412',
                     border: '1px solid',
-                    borderColor: selectedTag?.$id === tag.$id ? alpha('#6366F1', 0.4) : 'rgba(255, 255, 255, 0.05)',
+                    borderColor: selectedTagId === tag.$id ? alpha('#6366F1', 0.4) : 'rgba(255, 255, 255, 0.05)',
                     borderRadius: '20px',
                     cursor: 'pointer',
                     backgroundImage: 'none',
-                    boxShadow: selectedTag?.$id === tag.$id ? '0 10px 30px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)' : 'none',
+                    boxShadow: selectedTagId === tag.$id ? '0 10px 30px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)' : 'none',
                     transition: 'all 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
                     '&:hover': { borderColor: alpha('#6366F1', 0.4), bgcolor: '#1C1A18', transform: 'translateX(4px)' }
                   }}

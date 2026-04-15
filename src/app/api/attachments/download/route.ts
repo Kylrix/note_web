@@ -1,6 +1,7 @@
 'use server';
 
-import { NextResponse, NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { getCurrentUser, getNote, listNoteAttachments, verifySignedAttachmentURL, APPWRITE_BUCKET_NOTES_ATTACHMENTS } from '@/lib/appwrite';
 import { createRateLimiter } from '@/lib/rate-limit-middleware';
 import { APPWRITE_CONFIG } from '@/lib/appwrite/config';
@@ -46,7 +47,6 @@ export async function GET(req: NextRequest) {
     if (!user?.$id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const note = await getNote(noteId);
-    if (!note) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     if (note.userId !== ownerId) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
     // Owner or collaborator access check
@@ -54,8 +54,8 @@ export async function GET(req: NextRequest) {
       try {
         const { listCollaborators } = await import('@/lib/appwrite');
         const collabs: any = await listCollaborators(noteId);
-        const allowed = Array.isArray(collabs?.documents) && collabs.documents.some((c: any) => c.userId === user.$id);
-        if (!allowed) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+        const isCollaboratorAllowed = Array.isArray(collabs?.documents) && collabs.documents.some((c: any) => c.userId === user.$id);
+        if (!isCollaboratorAllowed) return NextResponse.json({ error: 'Not found' }, { status: 404 });
       } catch {
         return NextResponse.json({ error: 'Not found' }, { status: 404 });
       }

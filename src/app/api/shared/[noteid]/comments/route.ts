@@ -1,4 +1,5 @@
-import { NextResponse, NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { Client, Databases, Query } from 'appwrite';
 import { createRateLimiter } from '@/lib/rate-limit-middleware';
 import { APPWRITE_CONFIG } from '@/lib/appwrite/config';
@@ -47,7 +48,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ note
       noteid
     );
 
-    if (!note || !note.isPublic) {
+    if (!note.isPublic) {
       return NextResponse.json({ error: 'Note not found or not public' }, { status: 404 });
     }
 

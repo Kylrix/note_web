@@ -593,8 +593,8 @@ export default function SharedNoteClient({ noteId, initialKey }: SharedNoteClien
             const decrypted = await normalizeSharedNote(payload);
             setVerifiedNote(decrypted);
             setCachedData(CACHE_KEY, decrypted);
-          } catch (error) {
-            console.error('Failed to normalize shared note update', error);
+          } catch (updateError) {
+            console.error('Failed to normalize shared note update', updateError);
           }
         })();
       } else if (isDelete) {
@@ -608,7 +608,7 @@ export default function SharedNoteClient({ noteId, initialKey }: SharedNoteClien
     return () => {
       if (typeof sub === 'function') {
         (sub as any)();
-      } else if (sub && typeof (sub as any).unsubscribe === 'function') {
+      } else if (typeof (sub as any).unsubscribe === 'function') {
         (sub as any).unsubscribe();
       }
     };
@@ -692,13 +692,13 @@ export default function SharedNoteClient({ noteId, initialKey }: SharedNoteClien
   }
 
   const handleCopyContent = () => {
-    navigator.clipboard.writeText(verifiedNote?.content || '');
+    navigator.clipboard.writeText(verifiedNote.content || '');
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
   };
 
   const handleDuplicate = async () => {
-    if (!verifiedNote || isDuplicating) return;
+    if (isDuplicating) return;
     
     setIsDuplicating(true);
     try {
@@ -726,10 +726,8 @@ export default function SharedNoteClient({ noteId, initialKey }: SharedNoteClien
         metadata: JSON.stringify(metadata)
       });
 
-      if (newNote) {
-        showSuccess('Note Duplicated', 'This note has been added to your collection.');
-        setAlreadyDuplicated(true);
-      }
+      showSuccess('Note Duplicated', 'This note has been added to your collection.');
+      setAlreadyDuplicated(true);
     } catch (err: any) {
       showError('Duplication Failed', err.message || 'Failed to duplicate note.');
     } finally {
@@ -945,7 +943,7 @@ export default function SharedNoteClient({ noteId, initialKey }: SharedNoteClien
         </IconButton>
         <NoteContentRenderer
           content={verifiedNote.content || ''}
-          format={(verifiedNote.format as 'text' | 'doodle') || 'text'}
+          format={verifiedNote.format || 'text'}
           emptyFallback={<Typography sx={{ color: 'rgba(255, 255, 255, 0.2)', fontStyle: 'italic', fontFamily: 'var(--font-satoshi)' }}>This note is empty.</Typography>}
         />
       </Box>

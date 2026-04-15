@@ -6,6 +6,8 @@ import { Button } from './Button';
 import { Box, Typography, Paper, Stack } from '@mui/material';
 import { Warning as WarningIcon, Description as DescriptionIcon } from '@mui/icons-material';
 
+const showErrorDetailsByDefault = import.meta.env.DEV;
+
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
@@ -49,6 +51,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      const showDetails = this.props.showDetails ?? showErrorDetailsByDefault;
       // Custom fallback UI
       if (this.props.fallback) {
         return this.props.fallback;
@@ -68,7 +71,7 @@ export class ErrorBoundary extends Component<Props, State> {
               We encountered an unexpected error. You can try refreshing this section or contact support if the problem persists.
             </Typography>
 
-            {this.props.showDetails && this.state.error && (
+            {showDetails && this.state.error && (
               <Box sx={{ mb: 3, textAlign: 'left' }}>
                 <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.main', cursor: 'pointer', display: 'block', mb: 1 }}>
                   Error Details
@@ -85,6 +88,9 @@ export class ErrorBoundary extends Component<Props, State> {
                 >
                   <Typography component="pre" sx={{ fontSize: '0.7rem', fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
                     {this.state.error.message}
+                    {'\n'}
+                    {this.state.error.stack}
+                    {'\n'}
                     {this.state.errorInfo?.componentStack}
                   </Typography>
                 </Paper>
@@ -115,6 +121,7 @@ export class ErrorBoundary extends Component<Props, State> {
 // Specialized error boundary for notes section
 export const NotesErrorBoundary: React.FC<{ children: ReactNode }> = ({ children }) => (
   <ErrorBoundary
+    showDetails={showErrorDetailsByDefault}
     onError={(error, errorInfo) => {
       console.error('Notes section error:', error, errorInfo);
     }}

@@ -1,4 +1,5 @@
-import { NextResponse, NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { validatePublicNoteAccess } from '@/lib/appwrite';
 import { createRateLimiter } from '@/lib/rate-limit-middleware';
 

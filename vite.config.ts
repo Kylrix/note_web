@@ -8,6 +8,12 @@ import viteReact from '@vitejs/plugin-react'
 import { nitro } from 'nitro/vite'
 
 const config = defineConfig({
+  build: {
+    sourcemap: true,
+  },
+  server: {
+    sourcemapIgnoreList: false,
+  },
   resolve: {
     alias: {
       'next/navigation': fileURLToPath(new URL('./src/compat/next-navigation.ts', import.meta.url)),

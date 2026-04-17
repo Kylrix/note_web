@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import AppLayoutContent from '@/app/(app)/AppLayoutContent'
+import AppLayoutShell from '@/components/AppLayoutShell'
 import SettingsPage from '@/app/(app)/settings/page'
 
 export const Route = createFileRoute('/settings')({
@@ -8,8 +8,8 @@ export const Route = createFileRoute('/settings')({
 
 function SettingsRoute() {
   return (
-    <AppLayoutContent>
+    <AppLayoutShell>
       <SettingsPage />
-    </AppLayoutContent>
+    </AppLayoutShell>
   )
 }

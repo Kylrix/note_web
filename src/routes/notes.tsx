@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import AppLayoutContent from '@/app/(app)/AppLayoutContent'
+import AppLayoutShell from '@/components/AppLayoutShell'
 import NotesPage from '@/app/(app)/notes/page'
 
 export const Route = createFileRoute('/notes')({
@@ -8,8 +8,8 @@ export const Route = createFileRoute('/notes')({
 
 function NotesRoute() {
   return (
-    <AppLayoutContent>
+    <AppLayoutShell>
       <NotesPage />
-    </AppLayoutContent>
+    </AppLayoutShell>
   )
 }

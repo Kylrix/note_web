@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import AppLayoutContent from '@/app/(app)/AppLayoutContent'
+import AppLayoutShell from '@/components/AppLayoutShell'
 import TagsPage from '@/app/(app)/tags/page'
 
 export const Route = createFileRoute('/tags')({
@@ -8,8 +8,8 @@ export const Route = createFileRoute('/tags')({
 
 function TagsRoute() {
   return (
-    <AppLayoutContent>
+    <AppLayoutShell>
       <TagsPage />
-    </AppLayoutContent>
+    </AppLayoutShell>
   )
 }

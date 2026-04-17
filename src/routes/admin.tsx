@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import AppLayoutContent from '@/app/(app)/AppLayoutContent'
+import AppLayoutShell from '@/components/AppLayoutShell'
 import AdminDashboard from '@/app/admin/(protected)/dashboard/page'
 
 export const Route = createFileRoute('/admin')({
@@ -8,8 +8,8 @@ export const Route = createFileRoute('/admin')({
 
 function AdminRoute() {
   return (
-    <AppLayoutContent>
+    <AppLayoutShell>
       <AdminDashboard />
-    </AppLayoutContent>
+    </AppLayoutShell>
   )
 }

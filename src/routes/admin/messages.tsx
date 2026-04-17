@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import AppLayoutContent from '@/app/(app)/AppLayoutContent'
+import AppLayoutShell from '@/components/AppLayoutShell'
 import AdminMessages from '@/app/admin/(protected)/messages/page'
 
 export const Route = createFileRoute('/admin/messages')({
@@ -8,8 +8,8 @@ export const Route = createFileRoute('/admin/messages')({
 
 function AdminMessagesRoute() {
   return (
-    <AppLayoutContent>
+    <AppLayoutShell>
       <AdminMessages />
-    </AppLayoutContent>
+    </AppLayoutShell>
   )
 }

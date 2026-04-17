@@ -1,11 +1,11 @@
-import { Point, getPublicKey, getSharedSecret, recoverPublicKey, sign, verify, hashes } from '@noble/secp256k1'
+import { Point, getPublicKey, getSharedSecret, recoverPublicKey, schnorr, sign, verify, hashes } from '@noble/secp256k1'
 import { hmac } from '@noble/hashes/hmac.js'
 import { sha256 } from '@noble/hashes/sha2.js'
 
 hashes.sha256 = sha256
 hashes.hmacSha256 = (key, msg) => hmac(sha256, key, msg)
 
-const CURVE_N = Point.CURVE.n
+const CURVE_N = Point.CURVE().n
 const COMPRESSED_LENGTH = 33
 const UNCOMPRESSED_LENGTH = 65
 
@@ -68,11 +68,16 @@ export function pointFromScalar(privateKey: Uint8Array | Buffer, compressed = tr
 }
 
 export function pointAddScalar(point: Uint8Array | Buffer, tweak: Uint8Array | Buffer, compressed = true): Uint8Array | null {
-  if (!isPoint(point)) return null
-  const base = pointFromInput(point)
-  const scalar = normalizeScalar(tweak)
-  const tweaked = scalar === 0n ? base : base.add(Point.BASE.multiply(scalar))
-  return new Uint8Array(tweaked.toBytes(compressed))
+  try {
+    if (!isPoint(point)) return null
+    const base = pointFromInput(point)
+    const scalar = normalizeScalar(tweak)
+    const tweaked = scalar === 0n ? base : base.add(Point.BASE.multiplyUnsafe(scalar))
+    if (tweaked.is0()) return null
+    return new Uint8Array(tweaked.toBytes(compressed))
+  } catch {
+    return null
+  }
 }
 
 export function pointAdd(pointA: Uint8Array | Buffer, pointB: Uint8Array | Buffer, compressed = true): Uint8Array | null {
@@ -82,14 +87,25 @@ export function pointAdd(pointA: Uint8Array | Buffer, pointB: Uint8Array | Buffe
 }
 
 export function pointMultiply(point: Uint8Array | Buffer, tweak: Uint8Array | Buffer, compressed = true): Uint8Array | null {
-  if (!isPoint(point)) return null
-  const result = pointFromInput(point).multiply(normalizeScalar(tweak))
-  return new Uint8Array(result.toBytes(compressed))
+  try {
+    if (!isPoint(point)) return null
+    const result = pointFromInput(point).multiplyUnsafe(normalizeScalar(tweak))
+    if (result.is0()) return null
+    return new Uint8Array(result.toBytes(compressed))
+  } catch {
+    return null
+  }
 }
 
 export function pointCompress(point: Uint8Array | Buffer, compressed = true): Uint8Array | null {
-  if (!isPoint(point)) return null
-  return new Uint8Array(pointFromInput(point).toBytes(compressed))
+  try {
+    if (!isPoint(point)) return null
+    const result = pointFromInput(point)
+    if (result.is0()) return null
+    return new Uint8Array(result.toBytes(compressed))
+  } catch {
+    return null
+  }
 }
 
 export function privateAdd(privateKey: Uint8Array | Buffer, tweak: Uint8Array | Buffer): Uint8Array | null {
@@ -112,20 +128,21 @@ export function privateNegate(privateKey: Uint8Array | Buffer): Uint8Array | nul
   return bigIntTo32Bytes(negated)
 }
 
-export function signMessage(hash: Uint8Array | Buffer, privateKey: Uint8Array | Buffer): Uint8Array {
-  return new Uint8Array(sign(toBytes(hash), toBytes(privateKey)))
+export function signMessage(hash: Uint8Array | Buffer, privateKey: Uint8Array | Buffer, extraEntropy?: Uint8Array | Buffer): Uint8Array {
+  const opts = extraEntropy ? { extraEntropy: toBytes(extraEntropy), prehash: false } : { prehash: false }
+  return new Uint8Array(sign(toBytes(hash), toBytes(privateKey), opts))
 }
 
-export function verifySignature(signature: Uint8Array | Buffer, hash: Uint8Array | Buffer, publicKey: Uint8Array | Buffer): boolean {
-  return verify(toBytes(signature), toBytes(hash), toBytes(publicKey))
+export function verifySignature(hash: Uint8Array | Buffer, publicKey: Uint8Array | Buffer, signature: Uint8Array | Buffer): boolean {
+  return verify(toBytes(signature), toBytes(hash), toBytes(publicKey), { prehash: false })
 }
 
-export function signSchnorrMessage(hash: Uint8Array | Buffer, privateKey: Uint8Array | Buffer): Promise<Uint8Array> {
-  return sign(toBytes(hash), toBytes(privateKey), { der: false, format: 'compact' }) as Promise<Uint8Array>
+export function signSchnorrMessage(hash: Uint8Array | Buffer, privateKey: Uint8Array | Buffer, auxRand?: Uint8Array | Buffer): Uint8Array {
+  return new Uint8Array(schnorr.sign(toBytes(hash), toBytes(privateKey), auxRand ? toBytes(auxRand) : undefined))
 }
 
-export function verifySchnorrSignature(signature: Uint8Array | Buffer, hash: Uint8Array | Buffer, publicKey: Uint8Array | Buffer): Promise<boolean> {
-  return verify(toBytes(signature), toBytes(hash), toBytes(publicKey))
+export function verifySchnorrSignature(hash: Uint8Array | Buffer, publicKey: Uint8Array | Buffer, signature: Uint8Array | Buffer): boolean {
+  return schnorr.verify(toBytes(signature), toBytes(hash), toBytes(publicKey))
 }
 
 export function xOnlyPointFromPoint(point: Uint8Array | Buffer): Uint8Array | null {
@@ -140,14 +157,18 @@ export function xOnlyPointFromScalar(privateKey: Uint8Array | Buffer): Uint8Arra
 }
 
 export function xOnlyPointAddTweak(xOnlyPoint: Uint8Array | Buffer, tweak: Uint8Array | Buffer): { xOnlyPubkey: Uint8Array; parity: number } | null {
-  const xOnly = toBytes(xOnlyPoint)
-  if (xOnly.length !== 32) return null
-  const full = new Uint8Array(33)
-  full[0] = 0x02
-  full.set(xOnly, 1)
-  const tweaked = pointAddScalar(full, tweak, true)
-  if (!tweaked) return null
-  return { xOnlyPubkey: tweaked.slice(1), parity: tweaked[0] === 0x03 ? 1 : 0 }
+  try {
+    const xOnly = toBytes(xOnlyPoint)
+    if (xOnly.length !== 32) return null
+    const full = new Uint8Array(33)
+    full[0] = 0x02
+    full.set(xOnly, 1)
+    const tweaked = pointAddScalar(full, tweak, true)
+    if (!tweaked || tweaked.length !== 33) return null
+    return { xOnlyPubkey: tweaked.slice(1), parity: tweaked[0] === 0x03 ? 1 : 0 }
+  } catch {
+    return null
+  }
 }
 
 export function xOnlyPointFromPointLike(point: Uint8Array | Buffer): [Uint8Array, number] | null {

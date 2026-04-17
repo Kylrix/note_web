@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import AppLayoutContent from '@/app/(app)/AppLayoutContent'
+import AppLayoutShell from '@/components/AppLayoutShell'
 import SharedNotesPage from '@/app/(app)/shared/page'
 
 export const Route = createFileRoute('/shared')({
@@ -8,8 +8,8 @@ export const Route = createFileRoute('/shared')({
 
 function SharedRoute() {
   return (
-    <AppLayoutContent>
+    <AppLayoutShell>
       <SharedNotesPage />
-    </AppLayoutContent>
+    </AppLayoutShell>
   )
 }

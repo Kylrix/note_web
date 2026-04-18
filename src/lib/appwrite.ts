@@ -481,7 +481,7 @@ function getNotePermissions(userId: string, isPublic: boolean) {
 function filterNoteData(data: Record<string, any>): Record<string, any> {
   const schemaKeys = [
     'id', 'createdAt', 'updatedAt', 'userId', 'isPublic', 'status', 
-    'parentNoteId', 'title', 'content', 'tags', 'comments', 
+    'parentNoteId', 'title', 'searchTitle', 'content', 'tags', 'comments', 
     'extensions', 'collaborators', 'metadata', 'attachments', 'format'
   ];
   

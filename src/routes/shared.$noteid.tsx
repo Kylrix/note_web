@@ -1,6 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
 import SharedNoteClient from '@/app/shared/[noteid]/SharedNoteClient'
-import { useSearchParams } from '@/compat/next-navigation'
 
 export const Route = createFileRoute('/shared/$noteid')({
   component: SharedNoteRoute,
@@ -8,8 +7,5 @@ export const Route = createFileRoute('/shared/$noteid')({
 
 function SharedNoteRoute() {
   const { noteid } = Route.useParams()
-  const search = useSearchParams()
-  const initialKey = search.get('key') || undefined
-
-  return <SharedNoteClient noteId={noteid} initialKey={initialKey} />
+  return <SharedNoteClient noteId={noteid} />
 }

@@ -22,10 +22,10 @@ import { Route as LandingRouteImport } from './routes/landing'
 import { Route as ExtensionsRouteImport } from './routes/extensions'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as SharedNoteidRouteImport } from './routes/shared/$noteid'
+import { Route as SharedNoteidRouteImport } from './routes/shared.$noteid'
 import { Route as NotesIdRouteImport } from './routes/notes.$id'
 import { Route as AdminMessagesRouteImport } from './routes/admin/messages'
-import { Route as SharedNoteidKeyRouteImport } from './routes/shared/$noteid/$key'
+import { Route as SharedNoteidKeyRouteImport } from './routes/shared.$noteid.$key'
 import { Route as NotesIdAttachmentIdRouteImport } from './routes/notes.$id.$attachmentId'
 
 const VerifyRoute = VerifyRouteImport.update({

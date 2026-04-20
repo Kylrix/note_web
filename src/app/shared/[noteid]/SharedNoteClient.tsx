@@ -64,7 +64,6 @@ import { EcosystemPortal } from '@/components/common/EcosystemPortal';
 import { useDataNexus } from '@/context/DataNexusContext';
 import { ecosystemSecurity } from '@/lib/ecosystem/security';
 import { decryptGhostData } from '@/lib/encryption/ghost-crypto';
-import { useParams } from 'next/navigation';
 
 const spin = keyframes`
   from { transform: rotate(0deg); }
@@ -321,9 +320,7 @@ function SharedNoteHeader({ onRefresh, isRefreshing }: SharedNoteHeaderProps) {
 }
 
 export default function SharedNoteClient({ noteId, initialKey }: SharedNoteClientProps) {
-  const params = useParams();
-  const rawKey = params.key;
-  const key = initialKey || (Array.isArray(rawKey) ? rawKey.join('/') : (rawKey as string));
+  const key = initialKey;
   const [verifiedNote, setVerifiedNote] = useState<Notes | null>(null);
   const [authorProfile, setAuthorProfile] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);

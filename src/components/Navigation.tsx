@@ -43,53 +43,58 @@ export const MobileBottomNav: React.FC = () => {
       component="footer"
       sx={{
         position: 'fixed',
-        bottom: 20,
-        left: 20,
-        right: 20,
+        left: 0,
+        right: 0,
+        bottom: 0,
         zIndex: 1300,
         display: { xs: 'block', md: 'none' }
       }}
     >
-      <Paper
-        elevation={0}
-        sx={{
-          bgcolor: '#161412',
-          border: '1px solid rgba(255, 255, 255, 0.05)',
-          borderRadius: '24px',
-          px: 2,
-          py: 1.5,
-          display: 'flex',
-          justifyContent: 'space-around',
-          alignItems: 'center',
-          boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 20px 40px rgba(0,0,0,0.6)',
-          backgroundImage: 'none'
-        }}
-      >
-        {navLinks.map(({ icon: Icon, href }) => (
-          <IconButton
-            key={href}
-            component={Link}
-            href={href}
-            sx={{
-              color: isActive(href) ? '#000' : 'rgba(255, 255, 255, 0.6)',
-              bgcolor: isActive(href) ? '#EC4899' : 'transparent',
-              borderRadius: '16px',
-              p: 1.5,
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              '&:hover': {
-                bgcolor: isActive(href) ? '#EC4899' : 'rgba(255, 255, 255, 0.05)',
-                transform: 'translateY(-2px)'
-              },
-              ...(isActive(href) && {
-                boxShadow: '0 0 15px rgba(236, 72, 153, 0.4)',
-                transform: 'translateY(-4px)'
-              })
-            }}
-          >
-            <Icon size={24} strokeWidth={1.5} />
-          </IconButton>
-        ))}
-      </Paper>
+      <Box sx={{ px: 2, pb: 'calc(12px + env(safe-area-inset-bottom))' }}>
+        <Paper
+          elevation={0}
+          sx={{
+            width: '100%',
+            maxWidth: '420px',
+            mx: 'auto',
+            bgcolor: '#161412',
+            border: '1px solid rgba(255, 255, 255, 0.05)',
+            borderRadius: '24px',
+            px: 2,
+            py: 1.5,
+            display: 'flex',
+            justifyContent: 'space-around',
+            alignItems: 'center',
+            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 20px 40px rgba(0,0,0,0.6)',
+            backgroundImage: 'none'
+          }}
+        >
+          {navLinks.map(({ icon: Icon, href }) => (
+            <IconButton
+              key={href}
+              component={Link}
+              href={href}
+              sx={{
+                color: isActive(href) ? '#000' : 'rgba(255, 255, 255, 0.6)',
+                bgcolor: isActive(href) ? '#EC4899' : 'transparent',
+                borderRadius: '16px',
+                p: 1.5,
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                '&:hover': {
+                  bgcolor: isActive(href) ? '#EC4899' : 'rgba(255, 255, 255, 0.05)',
+                  transform: 'translateY(-2px)'
+                },
+                ...(isActive(href) && {
+                  boxShadow: '0 0 15px rgba(236, 72, 153, 0.4)',
+                  transform: 'translateY(-4px)'
+                })
+              }}
+            >
+              <Icon size={24} strokeWidth={1.5} />
+            </IconButton>
+          ))}
+        </Paper>
+      </Box>
     </Box>
   );
 };

@@ -79,7 +79,8 @@ interface SharedNoteClientProps {
 function decodeUrlSafeBase64ToBuffer(key: string): Uint8Array {
   const normalized = key.replace(/-/g, '+').replace(/_/g, '/');
   const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
-  return Uint8Array.from(Buffer.from(padded, 'base64'));
+  const binary = atob(padded);
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
 
 interface SharedNoteHeaderProps {

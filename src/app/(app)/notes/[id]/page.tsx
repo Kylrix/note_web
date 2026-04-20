@@ -30,12 +30,50 @@ import NoteReactions from '@/app/(app)/notes/NoteReactions';
 import SudoGuard from '@/components/ui/SudoGuard';
 import { useDataNexus } from '@/context/DataNexusContext';
 
+const NOTE_HOFF_PREFIX = 'note_detail_handoff_';
+const NOTE_HOFF_TTL = 60_000;
+const VOID = '#000000';
+const SURFACE = '#0A0908';
+const BORDER = 'rgba(255, 255, 255, 0.08)';
+
+type NoteHandoff = {
+  note: Notes;
+  openedAt: number;
+};
+
+function readNoteHandoff(noteId: string): Notes | null {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const raw = window.sessionStorage.getItem(`${NOTE_HOFF_PREFIX}${noteId}`);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as NoteHandoff;
+    if (
+      !parsed ||
+      parsed.note?.$id !== noteId ||
+      typeof parsed.openedAt !== 'number' ||
+      Date.now() - parsed.openedAt > NOTE_HOFF_TTL
+    ) {
+      window.sessionStorage.removeItem(`${NOTE_HOFF_PREFIX}${noteId}`);
+      return null;
+    }
+
+    return parsed.note;
+  } catch {
+    return null;
+  }
+}
+
+function clearNoteHandoff(noteId: string) {
+  if (typeof window === 'undefined') return;
+  window.sessionStorage.removeItem(`${NOTE_HOFF_PREFIX}${noteId}`);
+}
+
 export default function NoteEditorPage() {
   const { id } = useParams();
   const router = useRouter();
   const mountedRef = useRef(true);
-  const [note, setNote] = useState<Notes | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { showSuccess, showError } = useToast();
@@ -44,26 +82,38 @@ export default function NoteEditorPage() {
   const { fetchOptimized, setCachedData, invalidate, getCachedData } = useDataNexus();
 
   const CACHE_KEY = useMemo(() => id ? `note_${id}` : null, [id]);
+  const cachedNote = useMemo(() => {
+    if (!id || !CACHE_KEY) return null;
+    return readNoteHandoff(String(id)) || getCachedData<Notes>(CACHE_KEY);
+  }, [id, CACHE_KEY, getCachedData]);
+  const [note, setNote] = useState<Notes | null>(() => cachedNote);
+  const [isLoading, setIsLoading] = useState(() => !cachedNote);
 
   useEffect(() => {
+    mountedRef.current = true;
+
     if (!id || !CACHE_KEY) {
+      setNote(null);
       setIsLoading(false);
       return;
     }
 
-    // Try to get from cache first for instant UI
-    const cached = getCachedData<Notes>(CACHE_KEY);
-    if (cached) {
-      setNote(cached);
+    if (cachedNote) {
+      setNote(cachedNote);
+      setCachedData(CACHE_KEY, cachedNote);
+      clearNoteHandoff(String(id));
       setIsLoading(false);
+      return;
     }
 
+    setIsLoading(true);
+
     (async () => {
-      if (!cached) setIsLoading(true);
       try {
         const fetched = await fetchOptimized(CACHE_KEY, () => getNote(id as string));
         if (mountedRef.current) {
           setNote(fetched);
+          setCachedData(CACHE_KEY, fetched);
         }
       } catch (error: any) {
         console.error('Failed to load note', error);
@@ -76,7 +126,7 @@ export default function NoteEditorPage() {
     return () => {
       mountedRef.current = false;
     };
-  }, [id, CACHE_KEY, showError, fetchOptimized, getCachedData]);
+  }, [id, CACHE_KEY, cachedNote, showError, fetchOptimized, setCachedData]);
 
   const handleUpdate = async (updated: Notes) => {
     try {
@@ -117,7 +167,7 @@ export default function NoteEditorPage() {
 
   if (isLoading) {
     return (
-      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'background.default' }}>
+      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: VOID }}>
         <CircularProgress color="primary" />
       </Box>
     );
@@ -125,26 +175,26 @@ export default function NoteEditorPage() {
 
   if (!note) {
     return (
-      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'background.default' }}>
+      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: VOID }}>
         <Typography color="text.secondary">Note not found.</Typography>
       </Box>
     );
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: VOID }}>
       <Container maxWidth="lg" sx={{ py: 6 }}>
         <Box sx={{ 
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'space-between', 
           gap: 2, 
-          bgcolor: 'rgba(28, 26, 24, 0.95)',
+          bgcolor: SURFACE,
           borderRadius: '32px',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
+          border: `1px solid ${BORDER}`,
           p: 4,
           mb: 6,
-          boxShadow: '0 24px 48px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.03)',
+          boxShadow: '0 24px 48px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.03)',
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
             <IconButton
@@ -230,25 +280,25 @@ export default function NoteEditorPage() {
         <Box sx={{ 
           mt: 8, 
           pt: 6, 
-          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+          borderTop: `1px solid ${BORDER}`,
           display: 'flex',
           flexDirection: 'column',
           gap: 4
         }}>
           <Box sx={{ 
             p: 4, 
-            bgcolor: alpha('#161412', 0.02),
+            bgcolor: SURFACE,
             borderRadius: '32px',
-            border: '1px solid rgba(255, 255, 255, 0.05)',
+            border: `1px solid ${BORDER}`,
           }}>
             <NoteReactions targetId={id as string} />
           </Box>
           
           <Box sx={{ 
             p: 4, 
-            bgcolor: alpha('#161412', 0.02),
+            bgcolor: SURFACE,
             borderRadius: '32px',
-            border: '1px solid rgba(255, 255, 255, 0.05)',
+            border: `1px solid ${BORDER}`,
           }}>
             <CommentsSection noteId={id as string} />
           </Box>
@@ -261,8 +311,8 @@ export default function NoteEditorPage() {
         PaperProps={{
           sx: {
             borderRadius: 6,
-            bgcolor: 'rgba(28, 26, 24, 0.98)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
+            bgcolor: VOID,
+            border: `1px solid ${BORDER}`,
             backgroundImage: 'none',
             p: 2
           }

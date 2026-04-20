@@ -56,6 +56,12 @@ import {
 import { useAutosave } from '@/hooks/useAutosave';
 import { ecosystemSecurity } from '@/lib/ecosystem/security';
 
+const VOID = '#000000';
+const SURFACE = '#0A0908';
+const SURFACE_ELEVATED = '#161412';
+const BORDER = 'rgba(255, 255, 255, 0.08)';
+const BORDER_SUBTLE = 'rgba(255, 255, 255, 0.05)';
+
 interface NoteDetailSidebarProps {
   note: Notes;
   onUpdate: (updatedNote: Notes) => void;
@@ -139,6 +145,7 @@ export function NoteDetailSidebar({
   
   // Fetch linked tasks from Kylrix Flow
   useEffect(() => {
+    let cancelled = false;
     const fetchLinkedTasks = async () => {
       const taskIds = (liveNote as any).linkedTaskIds || ((liveNote as any).linkedTaskId ? [(liveNote as any).linkedTaskId] : []);
       if (!taskIds || taskIds.length === 0) {
@@ -157,12 +164,19 @@ export function NoteDetailSidebar({
       }
     };
 
-    fetchLinkedTasks();
+    const timer = window.setTimeout(() => {
+      if (!cancelled) void fetchLinkedTasks();
+    }, 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveNote.$id, (liveNote as any).linkedTaskIds, (liveNote as any).linkedTaskId]);
 
   // Fetch linked events from Kylrix Flow
   useEffect(() => {
+    let cancelled = false;
     const fetchLinkedEvents = async () => {
       const eventIds = (liveNote as any).linkedEventIds || ((liveNote as any).linkedEventId ? [(liveNote as any).linkedEventId] : []);
       if (!eventIds || eventIds.length === 0) {
@@ -181,12 +195,19 @@ export function NoteDetailSidebar({
       }
     };
 
-    fetchLinkedEvents();
+    const timer = window.setTimeout(() => {
+      if (!cancelled) void fetchLinkedEvents();
+    }, 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveNote.$id, (liveNote as any).linkedEventIds, (liveNote as any).linkedEventId]);
 
   // Fetch linked secrets from Kylrix Vault
   useEffect(() => {
+    let cancelled = false;
     const fetchLinkedSecrets = async () => {
       const secretIds = (liveNote as any).linkedCredentialIds || ((liveNote as any).linkedCredentialId ? [(liveNote as any).linkedCredentialId] : []);
       if (!secretIds || secretIds.length === 0) {
@@ -205,7 +226,13 @@ export function NoteDetailSidebar({
       }
     };
 
-    fetchLinkedSecrets();
+    const timer = window.setTimeout(() => {
+      if (!cancelled) void fetchLinkedSecrets();
+    }, 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveNote.$id, (liveNote as any).linkedCredentialIds, (liveNote as any).linkedCredentialId]);
   const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -241,6 +268,15 @@ export function NoteDetailSidebar({
 
   const handleOpenFullPage = () => {
     if (!liveNote.$id) return;
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.setItem(
+        `note_detail_handoff_${liveNote.$id}`,
+        JSON.stringify({
+          note: liveNote,
+          openedAt: Date.now(),
+        })
+      );
+    }
     closeSidebar();
     router.push(`/notes/${liveNote.$id}`);
   };
@@ -653,7 +689,7 @@ export function NoteDetailSidebar({
   };
 
   return (
-    <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 4 }}>
+    <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 4, bgcolor: VOID, minHeight: '100%', color: theme.palette.text.primary }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.5 }}>
         <IconButton
           onClick={onBack || closeSidebar}
@@ -782,16 +818,16 @@ export function NoteDetailSidebar({
         ref={titleContainerRef}
         sx={{
           borderRadius: '32px',
-          border: '1px solid #1C1A18',
-          bgcolor: '#161412',
+          border: `1px solid ${BORDER_SUBTLE}`,
+          bgcolor: SURFACE,
           p: 4,
           transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-          boxShadow: '0 24px 48px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05), inset 0 -1px 0 rgba(0, 0, 0, 0.4)',
+          boxShadow: '0 24px 48px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.03), inset 0 -1px 0 rgba(0, 0, 0, 0.5)',
           '&:focus-within': {
             borderColor: '#EC4899',
             bgcolor: alpha('#EC4899', 0.05),
             transform: 'translateZ(20px) translateY(-4px)',
-            boxShadow: `0 32px 64px ${alpha('#EC4899', 0.2)}, inset 0 1px 0 rgba(255, 255, 255, 0.05), inset 0 -1px 0 rgba(0, 0, 0, 0.4)`,
+            boxShadow: `0 32px 64px ${alpha('#EC4899', 0.2)}, inset 0 1px 0 rgba(255, 255, 255, 0.03), inset 0 -1px 0 rgba(0, 0, 0, 0.5)`,
           }
         }}
       >
@@ -861,16 +897,16 @@ export function NoteDetailSidebar({
         ref={contentContainerRef}
         sx={{
           borderRadius: '32px',
-          border: '1px solid #1C1A18',
-          bgcolor: '#161412',
+          border: `1px solid ${BORDER_SUBTLE}`,
+          bgcolor: SURFACE,
           p: 4,
           transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-          boxShadow: '0 24px 48px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05), inset 0 -1px 0 rgba(0, 0, 0, 0.4)',
+          boxShadow: '0 24px 48px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.03), inset 0 -1px 0 rgba(0, 0, 0, 0.5)',
           '&:focus-within': {
             borderColor: '#EC4899',
             bgcolor: alpha('#EC4899', 0.05),
             transform: 'translateZ(20px) translateY(-4px)',
-            boxShadow: `0 32px 64px ${alpha('#EC4899', 0.2)}, inset 0 1px 0 rgba(255, 255, 255, 0.05), inset 0 -1px 0 rgba(0, 0, 0, 0.4)`,
+            boxShadow: `0 32px 64px ${alpha('#EC4899', 0.2)}, inset 0 1px 0 rgba(255, 255, 255, 0.03), inset 0 -1px 0 rgba(0, 0, 0, 0.5)`,
           }
         }}
       >
@@ -1151,21 +1187,21 @@ export function NoteDetailSidebar({
         {currentAttachments.length > 0 ? (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, maxHeight: 240, overflow: 'auto' }}>
             {currentAttachments.map((a: any) => (
-              <Box key={a.id} sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 2,
-                p: 2,
-                borderRadius: '16px',
-                bgcolor: alpha(theme.palette.text.primary, 0.03),
-                border: `1px solid ${theme.palette.divider}`,
-                transition: 'all 0.2s ease',
-                '&:hover': {
-                  bgcolor: alpha(theme.palette.text.primary, 0.05),
-                  borderColor: alpha(theme.palette.text.primary, 0.1)
-                }
-              }}>
+                  <Box key={a.id} sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 2,
+                  p: 2,
+                  borderRadius: '16px',
+                  bgcolor: SURFACE_ELEVATED,
+                  border: `1px solid ${BORDER_SUBTLE}`,
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                  bgcolor: VOID,
+                  borderColor: BORDER
+                  }
+                }}>
                 <Box sx={{ minWidth: 0 }}>
                   <Typography variant="body2" sx={{ fontWeight: 700, color: theme.palette.primary.main, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font-clash)' }}>
                     {a.name}
@@ -1222,12 +1258,12 @@ export function NoteDetailSidebar({
                 gap: 2,
                 p: 2,
                 borderRadius: '16px',
-                bgcolor: alpha(theme.palette.primary.main, 0.03),
-                border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                bgcolor: SURFACE_ELEVATED,
+                border: `1px solid ${BORDER_SUBTLE}`,
                 transition: 'all 0.2s ease',
                 '&:hover': {
-                  bgcolor: alpha(theme.palette.primary.main, 0.06),
-                  borderColor: alpha(theme.palette.primary.main, 0.3)
+                  bgcolor: VOID,
+                  borderColor: BORDER
                 }
               }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
@@ -1279,12 +1315,12 @@ export function NoteDetailSidebar({
                 gap: 2,
                 p: 2,
                 borderRadius: '16px',
-                bgcolor: alpha(theme.palette.primary.main, 0.03),
-                border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                bgcolor: SURFACE_ELEVATED,
+                border: `1px solid ${BORDER_SUBTLE}`,
                 transition: 'all 0.2s ease',
                 '&:hover': {
-                  bgcolor: alpha(theme.palette.primary.main, 0.06),
-                  borderColor: alpha(theme.palette.primary.main, 0.3)
+                  bgcolor: VOID,
+                  borderColor: BORDER
                 }
               }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
@@ -1336,12 +1372,12 @@ export function NoteDetailSidebar({
                 gap: 2,
                 p: 2,
                 borderRadius: '16px',
-                bgcolor: alpha(theme.palette.primary.main, 0.03),
-                border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                bgcolor: SURFACE_ELEVATED,
+                border: `1px solid ${BORDER_SUBTLE}`,
                 transition: 'all 0.2s ease',
                 '&:hover': {
-                  bgcolor: alpha(theme.palette.primary.main, 0.06),
-                  borderColor: alpha(theme.palette.primary.main, 0.3)
+                  bgcolor: VOID,
+                  borderColor: BORDER
                 }
               }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
@@ -1366,7 +1402,7 @@ export function NoteDetailSidebar({
       </Box>
 
       {/* Metadata */}
-      <Box sx={{ pt: 4, borderTop: `1px solid ${theme.palette.divider}`, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+      <Box sx={{ pt: 4, borderTop: `1px solid ${BORDER}`, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
         <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontFamily: 'var(--font-satoshi)' }}>
           Created: {formatNoteCreatedDate(liveNote)}
         </Typography>
@@ -1378,7 +1414,7 @@ export function NoteDetailSidebar({
 
       {/* Edit Actions */}
       {isEditing && (
-        <Box sx={{ pt: 4, borderTop: `1px solid ${theme.palette.divider}`, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+        <Box sx={{ pt: 4, borderTop: `1px solid ${BORDER}`, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontFamily: 'var(--font-satoshi)', fontWeight: 600 }}>
               {isAutosaving ? 'Syncing changes…' : 'All changes synced'}
@@ -1420,14 +1456,14 @@ export function NoteDetailSidebar({
       <Dialog
         open={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
-          PaperProps={{
+        PaperProps={{
           sx: {
             borderRadius: '32px',
-            bgcolor: '#161412',
-            border: '1px solid #1C1A18',
+            bgcolor: VOID,
+            border: `1px solid ${BORDER_SUBTLE}`,
             backgroundImage: 'none',
             p: 2,
-            boxShadow: '0 24px 48px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05)'
+            boxShadow: '0 24px 48px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.03)'
           }
         }}
       >

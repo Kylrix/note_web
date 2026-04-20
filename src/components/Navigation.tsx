@@ -50,22 +50,21 @@ export const MobileBottomNav: React.FC = () => {
         display: { xs: 'block', md: 'none' }
       }}
     >
-      <Box sx={{ px: 2, pb: 'calc(12px + env(safe-area-inset-bottom))' }}>
         <Paper
           elevation={0}
           sx={{
             width: '100%',
-            maxWidth: '420px',
-            mx: 'auto',
             bgcolor: '#161412',
             border: '1px solid rgba(255, 255, 255, 0.05)',
-            borderRadius: '24px',
+            borderBottom: 0,
+            borderRadius: '24px 24px 0 0',
             px: 2,
-            py: 1.5,
+            pt: 1.5,
+            pb: 'calc(1.5rem + env(safe-area-inset-bottom))',
             display: 'flex',
             justifyContent: 'space-around',
             alignItems: 'center',
-            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 20px 40px rgba(0,0,0,0.6)',
+            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 -12px 32px rgba(0,0,0,0.45)',
             backgroundImage: 'none'
           }}
         >
@@ -94,7 +93,6 @@ export const MobileBottomNav: React.FC = () => {
             </IconButton>
           ))}
         </Paper>
-      </Box>
     </Box>
   );
 };

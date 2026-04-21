@@ -63,58 +63,64 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           window.history.replaceState({}, '', url.toString());
         }
 
-        let dbUser;
-        try {
-          dbUser = await getUser(currentUser.$id);
-          
-          // Auto-generate username if missing in DB
-          if (!dbUser.username) {
-            const autoUsername = getEffectiveUsername(dbUser);
-            if (autoUsername) {
-              try {
-                await updateUser(currentUser.$id, { username: autoUsername });
-                
-                // Sync to account prefs for ecosystem coherence
-                const currentPrefs = await account.getPrefs();
-                if (currentPrefs.username !== autoUsername) {
-                  await account.updatePrefs({ ...currentPrefs, username: autoUsername });
-                }
+        setUser(currentUser);
+        setIsLoading(false);
 
-                // Re-fetch to get updated document
-                dbUser = await getUser(currentUser.$id);
-              } catch (_updateErr: any) {
-                // Silently fail update
+        void (async () => {
+          let dbUser;
+          try {
+            dbUser = await getUser(currentUser.$id);
+
+            // Auto-generate username if missing in DB
+            if (!dbUser.username) {
+              const autoUsername = getEffectiveUsername(dbUser);
+              if (autoUsername) {
+                try {
+                  await updateUser(currentUser.$id, { username: autoUsername });
+
+                  // Sync to account prefs for ecosystem coherence
+                  const currentPrefs = await account.getPrefs();
+                  if (currentPrefs.username !== autoUsername) {
+                    await account.updatePrefs({ ...currentPrefs, username: autoUsername });
+                  }
+
+                  // Re-fetch to get updated document
+                  dbUser = await getUser(currentUser.$id);
+                } catch (_updateErr: any) {
+                  // Silently fail update
+                }
               }
             }
-          }
-        } catch (_fetchErr: any) {
-          try {
-            // Document doesn't exist, create it with auto-generated username
-            const autoUsername = getEffectiveUsername({
-              name: currentUser.name,
-              email: currentUser.email,
-              username: null
-            });
-            
-            dbUser = await createUser({
-              id: currentUser.$id,
-              email: currentUser.email,
-              name: currentUser.name,
-              username: autoUsername
-            });
+          } catch (_fetchErr: any) {
+            try {
+              // Document doesn't exist, create it with auto-generated username
+              const autoUsername = getEffectiveUsername({
+                name: currentUser.name,
+                email: currentUser.email,
+                username: null
+              });
 
-            // Sync to account prefs for ecosystem coherence
-            const currentPrefs = await account.getPrefs();
-            if (autoUsername && currentPrefs.username !== autoUsername) {
-              await account.updatePrefs({ ...currentPrefs, username: autoUsername });
+              dbUser = await createUser({
+                id: currentUser.$id,
+                email: currentUser.email,
+                name: currentUser.name,
+                username: autoUsername
+              });
+
+              // Sync to account prefs for ecosystem coherence
+              const currentPrefs = await account.getPrefs();
+              if (autoUsername && currentPrefs.username !== autoUsername) {
+                await account.updatePrefs({ ...currentPrefs, username: autoUsername });
+              }
+            } catch (createError) {
+              console.error('Failed to create user profile:', createError);
             }
-          } catch (createError) {
-            console.error('Failed to create user profile:', createError);
           }
-        }
-        
-        // Merge DB info into user state so fields like 'username' are available
-        setUser({ ...currentUser, ...dbUser });
+
+          if (dbUser) {
+            setUser((current) => (current && current.$id === currentUser.$id ? { ...current, ...dbUser } : current));
+          }
+        })();
       } else {
         setUser(null);
       }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef, forwardRef, useImperativeHandle } from 'react';
 import { 
     Box, 
     TextField, 
@@ -167,6 +167,477 @@ interface GhostSparkDetailPanelProps {
     onRecreate: (title: string, content: string) => void;
     onOpenPublicLink: (note: GhostNoteRef) => void;
 }
+
+interface FastGhostInputHandle {
+    getValue: () => string;
+    setValue: (value: string) => void;
+    clear: () => void;
+}
+
+interface FastGhostInputProps {
+    initialValue?: string;
+    placeholder?: string;
+    rows?: number;
+    autoFocus?: boolean;
+    maxLength?: number;
+    onEmptyChange?: (isEmpty: boolean) => void;
+    onValueChange?: (value: string) => void;
+}
+
+const FastGhostInput = React.memo(forwardRef<FastGhostInputHandle, FastGhostInputProps>(function FastGhostInput(
+    {
+        initialValue = '',
+        placeholder,
+        rows = 12,
+        autoFocus = false,
+        maxLength = MAX_CONTENT_LENGTH,
+        onEmptyChange,
+        onValueChange,
+    },
+    ref,
+) {
+    const inputRef = useRef<HTMLTextAreaElement | null>(null);
+    const lastEmptyRef = useRef<boolean>(!initialValue.trim());
+
+    useEffect(() => {
+        if (!autoFocus) return;
+        const frame = window.requestAnimationFrame(() => {
+            inputRef.current?.focus();
+        });
+        return () => window.cancelAnimationFrame(frame);
+    }, [autoFocus]);
+
+    useEffect(() => {
+        onEmptyChange?.(lastEmptyRef.current);
+    }, [onEmptyChange]);
+
+    useImperativeHandle(ref, () => ({
+        getValue: () => inputRef.current?.value || '',
+        setValue: (value: string) => {
+            const next = value ?? '';
+            if (inputRef.current) {
+                inputRef.current.value = next;
+                inputRef.current.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        },
+        clear: () => {
+            if (inputRef.current) {
+                inputRef.current.value = '';
+                inputRef.current.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        },
+    }), []);
+
+    const syncState = (value: string) => {
+        const isEmpty = !value.trim();
+        if (isEmpty !== lastEmptyRef.current) {
+            lastEmptyRef.current = isEmpty;
+            onEmptyChange?.(isEmpty);
+        }
+        onValueChange?.(value);
+    };
+
+    return (
+        <Box
+            component="textarea"
+            ref={inputRef}
+            defaultValue={initialValue}
+            placeholder={placeholder}
+            rows={rows}
+            onInput={(e: React.FormEvent<HTMLTextAreaElement>) => syncState(e.currentTarget.value)}
+            maxLength={maxLength}
+            sx={{
+                width: '100%',
+                border: 'none',
+                outline: 'none',
+                resize: 'none',
+                background: 'transparent',
+                color: 'rgba(255, 255, 255, 0.7)',
+                font: 'inherit',
+                fontSize: '1.1rem',
+                lineHeight: 1.6,
+                fontFamily: 'var(--font-satoshi)',
+                padding: 0,
+                minHeight: `${rows * 1.6}em`,
+                '&::placeholder': {
+                    color: 'rgba(255, 255, 255, 0.1)',
+                    opacity: 1,
+                },
+            }}
+        />
+    );
+}));
+
+interface GhostComposerHandle {
+    clear: () => void;
+    setDraft: (title: string, content: string) => void;
+}
+
+interface GhostComposerProps {
+    lifespanMs: number;
+    onOpenSettings: () => void;
+    onOpenIDMWindow: () => void;
+    onCreate: (title: string, content: string) => Promise<{ created: boolean; copied: boolean }>;
+}
+
+const GhostComposer = React.memo(forwardRef<GhostComposerHandle, GhostComposerProps>(function GhostComposer(
+    {
+        lifespanMs,
+        onOpenSettings,
+        onOpenIDMWindow,
+        onCreate,
+    },
+    ref,
+) {
+    const theme = useTheme();
+    const contentRef = useRef<FastGhostInputHandle | null>(null);
+    const clearTimerRef = useRef<number | null>(null);
+    const suppressAutoTitleRef = useRef(false);
+    const [title, setTitle] = useState('');
+    const [isTitleManuallyEdited, setIsTitleManuallyEdited] = useState(false);
+    const [contentLength, setContentLength] = useState(0);
+    const [hasContent, setHasContent] = useState(false);
+    const [isCreating, setIsCreating] = useState(false);
+    const [isLinkCopied, setIsLinkCopied] = useState(false);
+
+    useEffect(() => {
+        return () => {
+            if (clearTimerRef.current) {
+                window.clearTimeout(clearTimerRef.current);
+            }
+        };
+    }, []);
+
+    const clearDraft = useCallback(() => {
+        contentRef.current?.clear();
+        setTitle('');
+        setIsTitleManuallyEdited(false);
+        setContentLength(0);
+        setHasContent(false);
+        setIsLinkCopied(false);
+        if (clearTimerRef.current) {
+            window.clearTimeout(clearTimerRef.current);
+            clearTimerRef.current = null;
+        }
+    }, []);
+
+    useImperativeHandle(ref, () => ({
+        clear: clearDraft,
+        setDraft: (nextTitle: string, nextContent: string) => {
+            suppressAutoTitleRef.current = true;
+            contentRef.current?.setValue(nextContent || '');
+            setContentLength(nextContent.length);
+            setHasContent(Boolean(nextContent.trim()));
+            setTitle(nextTitle || '');
+            setIsTitleManuallyEdited(Boolean(nextTitle.trim()));
+            setIsLinkCopied(false);
+            window.setTimeout(() => {
+                suppressAutoTitleRef.current = false;
+            }, 0);
+        },
+    }), [clearDraft]);
+
+    const copyToClipboard = useCallback(async (text: string) => {
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(text);
+                return true;
+            }
+
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-9999px';
+            textArea.style.top = '0';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textArea);
+            return successful;
+        } catch (err) {
+            console.error('Fallback: Oops, unable to copy', err);
+            return false;
+        }
+    }, []);
+
+    const handleContentInput = useCallback((value: string) => {
+        setContentLength(value.length);
+        const trimmed = value.trim();
+        setHasContent(Boolean(trimmed));
+
+        if (!trimmed) {
+            if (isTitleManuallyEdited) {
+                setIsTitleManuallyEdited(false);
+            }
+            if (title) {
+                setTitle('');
+            }
+            return;
+        }
+
+        if (!isTitleManuallyEdited && !suppressAutoTitleRef.current) {
+            const generatedTitle = buildAutoTitleFromContent(value);
+            if (generatedTitle !== title) {
+                setTitle(generatedTitle);
+            }
+        }
+    }, [isTitleManuallyEdited, title]);
+
+    const handleCopyContent = useCallback(async () => {
+        const content = contentRef.current?.getValue() || '';
+        if (!content.trim()) return;
+        const copied = await copyToClipboard(content);
+        if (copied) {
+            setIsLinkCopied(true);
+            toast.success('Content copied');
+            if (clearTimerRef.current) {
+                window.clearTimeout(clearTimerRef.current);
+            }
+            clearTimerRef.current = window.setTimeout(() => setIsLinkCopied(false), 2000);
+        }
+    }, [copyToClipboard]);
+
+    const handleCreateAndCopyLink = useCallback(async () => {
+        const content = contentRef.current?.getValue() || '';
+        if (!title.trim() || !content.trim()) {
+            toast.error('Complete your note first!');
+            return;
+        }
+
+        setIsCreating(true);
+        try {
+            const result = await onCreate(title.trim(), content.trim());
+            if (result.created) {
+                clearDraft();
+                if (result.copied) {
+                    setIsLinkCopied(true);
+                    if (clearTimerRef.current) {
+                        window.clearTimeout(clearTimerRef.current);
+                    }
+                    clearTimerRef.current = window.setTimeout(() => setIsLinkCopied(false), 3000);
+                }
+            }
+        } finally {
+            setIsCreating(false);
+        }
+    }, [clearDraft, onCreate, title]);
+
+    const currentLifespanLabel = LIFESPAN_OPTIONS.find(o => o.value === lifespanMs)?.label || '7 Days';
+
+    return (
+        <Paper sx={{
+            p: 0,
+            borderRadius: '32px',
+            overflow: 'hidden',
+            bgcolor: '#161412',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            boxShadow: '0 20px 40px -15px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.05), inset 0 -1px 0 rgba(0,0,0,0.5)',
+            backdropFilter: 'none',
+            position: 'relative',
+            transition: 'all 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
+            '&:focus-within': {
+                borderColor: alpha(theme.palette.secondary.main, 0.4),
+                boxShadow: `0 40px 80px -20px rgba(0,0,0,0.9), 0 0 20px ${alpha(theme.palette.secondary.main, 0.1)}, inset 0 1px 1px ${alpha('#FFFFFF', 0.1)}`,
+            }
+        }}>
+            <Box sx={{
+                px: 4,
+                pt: 3,
+                pb: 2,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.03)'
+            }}>
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                    <Box sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        px: 1.5,
+                        py: 0.5,
+                        borderRadius: '8px',
+                        bgcolor: 'rgba(255, 255, 255, 0.03)',
+                        border: '1px solid rgba(255, 255, 255, 0.05)'
+                    }}>
+                        <Typography
+                            variant="caption"
+                            sx={{
+                                color: contentLength >= MAX_CONTENT_LENGTH ? theme.palette.error.main : 'rgba(255, 255, 255, 0.4)',
+                                fontWeight: 700,
+                                fontFamily: 'var(--font-jetbrains-mono)',
+                                letterSpacing: '0.05em'
+                            }}
+                        >
+                            {contentLength.toLocaleString()} / {MAX_CONTENT_LENGTH.toLocaleString()}
+                        </Typography>
+                    </Box>
+
+                    <Tooltip title={`Lifespan: ${currentLifespanLabel}`}>
+                        <Box
+                            onClick={onOpenSettings}
+                            sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1,
+                                px: 1.5,
+                                py: 0.5,
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                bgcolor: alpha(theme.palette.secondary.main, 0.05),
+                                border: `1px solid ${alpha(theme.palette.secondary.main, 0.1)}`,
+                                color: theme.palette.secondary.main,
+                                transition: 'all 0.2s',
+                                '&:hover': { bgcolor: alpha(theme.palette.secondary.main, 0.1) }
+                            }}
+                        >
+                            <Clock size={12} />
+                            <Typography variant="caption" sx={{ fontWeight: 800, fontSize: '0.65rem', textTransform: 'uppercase' }}>
+                                {currentLifespanLabel.split(' ')[0] || '7d'}
+                            </Typography>
+                        </Box>
+                    </Tooltip>
+                </Stack>
+
+                <Stack direction="row" spacing={1}>
+                    <Tooltip title="Copy Content" placement="top">
+                        <IconButton
+                            onClick={handleCopyContent}
+                            disabled={!hasContent}
+                            size="small"
+                            sx={{
+                                bgcolor: alpha(theme.palette.background.paper, 0.4),
+                                color: isLinkCopied ? theme.palette.secondary.main : 'rgba(255, 255, 255, 0.4)',
+                                border: '1px solid rgba(255, 255, 255, 0.05)',
+                                '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.05)', color: 'white' }
+                            }}
+                        >
+                            {isLinkCopied ? <CheckIcon size={16} /> : <CopyIcon size={16} />}
+                        </IconButton>
+                    </Tooltip>
+
+                    <Tooltip title="Copy Share Link" placement="top">
+                        <IconButton
+                            onClick={handleCreateAndCopyLink}
+                            disabled={isCreating || !title.trim() || !hasContent}
+                            size="small"
+                            sx={{
+                                bgcolor: isLinkCopied ? alpha(theme.palette.secondary.main, 0.1) : alpha(theme.palette.background.paper, 0.4),
+                                color: isLinkCopied ? theme.palette.secondary.main : 'white',
+                                border: '1px solid',
+                                borderColor: isLinkCopied ? theme.palette.secondary.main : 'rgba(255, 255, 255, 0.05)',
+                                '&:hover': {
+                                    bgcolor: alpha(theme.palette.secondary.main, 0.05),
+                                    borderColor: theme.palette.secondary.main
+                                }
+                            }}
+                        >
+                            {isCreating ? <CircularProgress size={16} color="inherit" /> : (isLinkCopied ? <CheckIcon size={16} /> : <Share2 size={16} />)}
+                        </IconButton>
+                    </Tooltip>
+                </Stack>
+            </Box>
+
+            <Box sx={{ p: 4, pt: 3, pb: 2 }}>
+                {(contentLength >= 5 || isTitleManuallyEdited) && (
+                    <TextField
+                        fullWidth
+                        placeholder="Note Title"
+                        value={title}
+                        onChange={(e) => {
+                            setTitle(e.target.value);
+                            setIsTitleManuallyEdited(true);
+                        }}
+                        variant="standard"
+                        InputProps={{
+                            disableUnderline: true,
+                            sx: {
+                                fontSize: '2.5rem',
+                                fontWeight: 900,
+                                fontFamily: 'var(--font-clash)',
+                                color: 'white',
+                                mb: 1,
+                                animation: 'fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                                '@keyframes fadeIn': {
+                                    '0%': { opacity: 0, transform: 'translateY(-10px)' },
+                                    '100%': { opacity: 1, transform: 'translateY(0)' }
+                                },
+                                '&::placeholder': { opacity: 0.1 }
+                            }
+                        }}
+                    />
+                )}
+                <FastGhostInput
+                    ref={contentRef}
+                    initialValue=""
+                    placeholder="Start typing your brilliance..."
+                    rows={12}
+                    maxLength={MAX_CONTENT_LENGTH}
+                    onValueChange={handleContentInput}
+                />
+            </Box>
+
+            <Box sx={{
+                p: 3,
+                bgcolor: '#1C1A18',
+                borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+            }}>
+                <Stack direction="row" spacing={2} alignItems="center">
+                    <Box sx={{ display: 'flex', color: 'rgba(255, 255, 255, 0.3)' }}>
+                        <Shield size={16} />
+                        <Typography variant="caption" sx={{ ml: 1, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            Public & Anonymous
+                        </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', color: 'var(--color-secondary)', alignItems: 'center' }}>
+                        <Clock size={16} />
+                        <Typography variant="caption" sx={{ ml: 1, fontWeight: 800 }}>
+                            Expires in {currentLifespanLabel}
+                        </Typography>
+                    </Box>
+                </Stack>
+
+                <Box sx={{ textAlign: 'right' }}>
+                    <Typography variant="caption" sx={{ display: 'block', mb: 1, opacity: 0.4, fontWeight: 700 }}>
+                        ONCE SHARED, THIS NOTE IS LOCKED.
+                    </Typography>
+                    <Button
+                        onClick={handleCreateAndCopyLink}
+                        disabled={isCreating || !title.trim() || !hasContent}
+                        variant="contained"
+                        color="secondary"
+                        sx={{
+                            borderRadius: '100px',
+                            px: 4,
+                            py: 1.5,
+                            fontWeight: 900,
+                            bgcolor: 'var(--color-secondary)',
+                            boxShadow: `0 10px 30px ${alpha('#EC4899', 0.3)}`,
+                            '&:hover': {
+                                transform: 'translateY(-2px)',
+                                bgcolor: '#D946EF',
+                                boxShadow: `0 15px 40px ${alpha('#EC4899', 0.5)}`,
+                            }
+                        }}
+                    >
+                        {isCreating ? (
+                            <CircularProgress size={20} color="inherit" />
+                        ) : (
+                            <>
+                                {isLinkCopied ? <CheckIcon size={18} /> : <Share2 size={18} />}
+                                <Box component="span" sx={{ ml: 1 }}>{isLinkCopied ? 'LINK COPIED' : 'COPY LINK'}</Box>
+                            </>
+                        )}
+                    </Button>
+                </Box>
+            </Box>
+        </Paper>
+    );
+}));
 
 const GhostSparkDetailPanel = ({ note, onRecreate, onOpenPublicLink }: GhostSparkDetailPanelProps) => {
     const theme = useTheme();
@@ -548,14 +1019,8 @@ export const GhostEditor = () => {
     const theme = useTheme();
     const { openIDMWindow } = useAuth();
     const { showSuccess } = useToast();
-    const [title, setTitle] = useState('');
-    const [content, setContent] = useState('');
-    const [isCreating, setIsCreating] = useState(false);
     const [prevNotes, setPrevNotes] = useState<GhostNoteRef[]>([]);
-    const [copiedId, setCopiedId] = useState<string | null>(null);
-    const [isLinkCopied, setIsLinkCopied] = useState(false);
-    const [isTitleManuallyEdited, setIsTitleManuallyEdited] = useState(false);
-    
+    const composerRef = useRef<GhostComposerHandle | null>(null);
     const { openSidebar, closeSidebar } = useDynamicSidebar();
     
     // Lifespan Settings
@@ -567,8 +1032,7 @@ export const GhostEditor = () => {
             <GhostSparkDetailPanel
                 note={note}
                 onRecreate={(displayTitle, displayContent) => {
-                    setTitle(displayTitle);
-                    setContent(displayContent);
+                    composerRef.current?.setDraft(displayTitle, displayContent);
                     closeSidebar();
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
@@ -685,116 +1149,74 @@ export const GhostEditor = () => {
         }
     };
 
-    // Seamless auto-title logic
-    useEffect(() => {
-        if (isTitleManuallyEdited) return;
+    const handleCreateAndCopyLink = useCallback(async (draftTitle: string, draftContent: string) => {
+        const secret = localStorage.getItem(GHOST_SECRET_KEY) || crypto.randomUUID();
+        const finalTitle = draftTitle.trim();
+        const expiresAt = new Date(Date.now() + lifespanMs).toISOString();
 
-        const generatedTitle = buildAutoTitleFromContent(content);
-        if (content.trim()) {
-            if (generatedTitle !== title) {
-                setTitle(generatedTitle);
-            }
-        } else {
-            setTitle('');
-        }
-    }, [content, isTitleManuallyEdited, title]);
-
-    const copyToClipboard = async (text: string) => {
         try {
-            if (navigator.clipboard && window.isSecureContext) {
-                await navigator.clipboard.writeText(text);
-                return true;
-            } else {
-                // Fallback for Safari/Non-secure contexts
-                const textArea = document.createElement("textarea");
-                textArea.value = text;
-                textArea.style.position = "fixed";
-                textArea.style.left = "-9999px";
-                textArea.style.top = "0";
-                document.body.appendChild(textArea);
-                textArea.focus();
-                textArea.select();
-                const successful = document.execCommand('copy');
-                document.body.removeChild(textArea);
-                return successful;
-            }
-        } catch (err) {
-            console.error('Fallback: Oops, unable to copy', err);
-            return false;
-        }
-    };
-
-    const handleCreateAndCopyLink = async () => {
-        if (!title.trim() || !content.trim()) {
-            toast.error("Complete your note first!");
-            return;
-        }
-
-        setIsCreating(true);
-        try {
-            const secret = localStorage.getItem(GHOST_SECRET_KEY) || crypto.randomUUID();
-            const finalTitle = title.trim();
-            const expiresAt = new Date(Date.now() + lifespanMs).toISOString();
-            
-            // ENCRYPT GHOST NOTE
             const { encrypted: encTitle, key: noteKey } = await encryptGhostData(finalTitle);
-            const { encrypted: encContent } = await encryptGhostData(content.trim(), noteKey);
-            
+            const { encrypted: encContent } = await encryptGhostData(draftContent.trim(), noteKey);
+
             const note = await AppwriteService.createGhostNote({
                 title: encTitle,
                 content: encContent,
                 ghostSecret: secret,
-                expiresAt: expiresAt,
+                expiresAt,
                 isEncrypted: true
             });
 
-            if (note) {
-                // URI format: /shared/[id]/[key]
-                const url = `${window.location.origin}/shared/${note.$id}/${noteKey}`;
-                const copied = await copyToClipboard(url);
-                
-                if (copied) {
-                    setCopiedId(note.$id);
-                    showSuccess('Link Copied', 'Live share link copied to clipboard.');
-                } else {
-                    toast.error("Note created, but failed to copy link. Check your history.");
-                }
-
-                // Update history
-                const newRef: GhostNoteRef = { 
-                    id: note.$id, 
-                    title: finalTitle, // Plain title for history
-                    createdAt: new Date().toISOString(),
-                    expiresAt: expiresAt,
-                    decryptionKey: noteKey
-                };
-                const updatedHistory = [newRef, ...prevNotes].slice(0, 10);
-                saveHistory(updatedHistory);
-
-                // Clear editor
-                setTitle('');
-                setContent('');
-                setIsTitleManuallyEdited(false);
-
-                setTimeout(() => setCopiedId(null), 3000);
+            if (!note) {
+                toast.error('Creation failed. System degraded.');
+                return { created: false, copied: false };
             }
+
+            const url = `${window.location.origin}/shared/${note.$id}/${noteKey}`;
+            let copied = false;
+
+            try {
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(url);
+                    copied = true;
+                } else {
+                    const textArea = document.createElement('textarea');
+                    textArea.value = url;
+                    textArea.style.position = 'fixed';
+                    textArea.style.left = '-9999px';
+                    textArea.style.top = '0';
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    copied = document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                }
+            } catch (copyError) {
+                console.error('Failed to copy share link', copyError);
+            }
+
+            if (copied) {
+                showSuccess('Link Copied', 'Live share link copied to clipboard.');
+            } else {
+                toast.error('Note created, but failed to copy link. Check your history.');
+            }
+
+            const newRef: GhostNoteRef = {
+                id: note.$id,
+                title: finalTitle,
+                createdAt: new Date().toISOString(),
+                expiresAt,
+                decryptionKey: noteKey
+            };
+            const updatedHistory = [newRef, ...prevNotes].slice(0, 10);
+            saveHistory(updatedHistory);
+
+            return { created: true, copied };
         } catch (error: any) {
             console.error(error);
-            toast.error("Creation failed. System degraded.");
-        } finally {
-            setIsCreating(false);
+            toast.error('Creation failed. System degraded.');
+            return { created: false, copied: false };
         }
-    };
-
-    const handleCopyContent = async () => {
-        if (!content.trim()) return;
-        const copied = await copyToClipboard(content);
-        if (copied) {
-            setIsLinkCopied(true);
-            toast.success("Content copied");
-            setTimeout(() => setIsLinkCopied(false), 2000);
-        }
-    };
+    }, [lifespanMs, prevNotes, saveHistory, showSuccess]);
 
     const handleContextMenu = useCallback((event: React.MouseEvent, noteId: string) => {
         event.preventDefault();
@@ -877,258 +1299,13 @@ export const GhostEditor = () => {
             <Grid container spacing={4}>
                 {/* Main Editor */}
                 <Grid size={{ xs: 12, lg: hasHistory ? 8 : 12 }}>
-                    <Paper sx={{ 
-                        p: 0, 
-                        borderRadius: '32px', 
-                        overflow: 'hidden',
-                        bgcolor: '#161412',
-                        border: '1px solid rgba(255, 255, 255, 0.08)',
-                        boxShadow: '0 20px 40px -15px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.05), inset 0 -1px 0 rgba(0,0,0,0.5)',
-                        backdropFilter: 'none',
-                        position: 'relative',
-                        transition: 'all 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
-                        '&:focus-within': {
-                            borderColor: alpha(theme.palette.secondary.main, 0.4),
-                            boxShadow: `0 40px 80px -20px rgba(0,0,0,0.9), 0 0 20px ${alpha(theme.palette.secondary.main, 0.1)}, inset 0 1px 1px ${alpha('#FFFFFF', 0.1)}`,
-                        }
-                    }}>
-                        {/* Action Header Area */}
-                        <Box sx={{ 
-                            px: 4, 
-                            pt: 3, 
-                            pb: 2, 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            justifyContent: 'space-between',
-                            borderBottom: '1px solid rgba(255, 255, 255, 0.03)'
-                        }}>
-                            <Stack direction="row" spacing={1.5} alignItems="center">
-                                <Box sx={{ 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    gap: 1, 
-                                    px: 1.5, 
-                                    py: 0.5, 
-                                    borderRadius: '8px', 
-                                    bgcolor: 'rgba(255, 255, 255, 0.03)',
-                                    border: '1px solid rgba(255, 255, 255, 0.05)'
-                                }}>
-                                    <Typography
-                                        variant="caption"
-                                        sx={{
-                                            color: content.length >= MAX_CONTENT_LENGTH ? theme.palette.error.main : 'rgba(255, 255, 255, 0.4)',
-                                            fontWeight: 700,
-                                            fontFamily: 'var(--font-jetbrains-mono)',
-                                            letterSpacing: '0.05em'
-                                        }}
-                                    >
-                                        {content.length.toLocaleString()} / {MAX_CONTENT_LENGTH.toLocaleString()}
-                                    </Typography>
-                                </Box>
-
-                                <Tooltip title={`Lifespan: ${LIFESPAN_OPTIONS.find(o => o.value === lifespanMs)?.label || '7 Days'}`}>
-                                    <Box 
-                                        onClick={() => setIsSettingsOpen(true)}
-                                        sx={{ 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
-                                            gap: 1, 
-                                            px: 1.5, 
-                                            py: 0.5, 
-                                            borderRadius: '8px', 
-                                            cursor: 'pointer',
-                                            bgcolor: alpha(theme.palette.secondary.main, 0.05),
-                                            border: `1px solid ${alpha(theme.palette.secondary.main, 0.1)}`,
-                                            color: theme.palette.secondary.main,
-                                            transition: 'all 0.2s',
-                                            '&:hover': { bgcolor: alpha(theme.palette.secondary.main, 0.1) }
-                                        }}
-                                    >
-                                        <Clock size={12} />
-                                        <Typography variant="caption" sx={{ fontWeight: 800, fontSize: '0.65rem', textTransform: 'uppercase' }}>
-                                            {LIFESPAN_OPTIONS.find(o => o.value === lifespanMs)?.label.split(' ')[0] || '7d'}
-                                        </Typography>
-                                    </Box>
-                                </Tooltip>
-                            </Stack>
-
-                            <Stack direction="row" spacing={1}>
-                                <Tooltip title="Copy Content" placement="top">
-                                    <IconButton
-                                        onClick={handleCopyContent}
-                                        disabled={!content.trim()}
-                                        size="small"
-                                        sx={{ 
-                                            bgcolor: alpha(theme.palette.background.paper, 0.4),
-                                            color: isLinkCopied ? theme.palette.secondary.main : 'rgba(255, 255, 255, 0.4)',
-                                            border: '1px solid rgba(255, 255, 255, 0.05)',
-                                            '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.05)', color: 'white' }
-                                        }}
-                                    >
-                                        {isLinkCopied ? <CheckIcon size={16} /> : <CopyIcon size={16} />}
-                                    </IconButton>
-                                </Tooltip>
-
-                                <Tooltip title="Copy Share Link" placement="top">
-                                    <IconButton
-                                        onClick={handleCreateAndCopyLink}
-                                        disabled={isCreating || !title.trim() || !content.trim()}
-                                        size="small"
-                                        sx={{ 
-                                            bgcolor: copiedId ? alpha(theme.palette.secondary.main, 0.1) : alpha(theme.palette.background.paper, 0.4),
-                                            color: copiedId ? theme.palette.secondary.main : 'white',
-                                            border: '1px solid',
-                                            borderColor: copiedId ? theme.palette.secondary.main : 'rgba(255, 255, 255, 0.05)',
-                                            '&:hover': {
-                                                bgcolor: alpha(theme.palette.secondary.main, 0.05),
-                                                borderColor: theme.palette.secondary.main
-                                            }
-                                        }}
-                                    >
-                                        {isCreating ? <CircularProgress size={16} color="inherit" /> : (copiedId ? <CheckIcon size={16} /> : <Share2 size={16} />)}
-                                    </IconButton>
-                                </Tooltip>
-                            </Stack>
-                        </Box>
-
-                        <Box sx={{ p: 4, pt: 3, pb: 2 }}>
-                            {(content.trim().length >= 5 || isTitleManuallyEdited) && (
-                                <TextField
-                                    fullWidth
-                                    placeholder="Note Title"
-                                    value={title}
-                                    onChange={(e) => {
-                                        setTitle(e.target.value);
-                                        setIsTitleManuallyEdited(true);
-                                    }}
-                                    variant="standard"
-                                    InputProps={{
-                                        disableUnderline: true,
-                                        sx: { 
-                                            fontSize: '2.5rem', 
-                                            fontWeight: 900, 
-                                            fontFamily: 'var(--font-clash)',
-                                            color: 'white', 
-                                            mb: 1,
-                                            animation: 'fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-                                            '@keyframes fadeIn': {
-                                                '0%': { opacity: 0, transform: 'translateY(-10px)' },
-                                                '100%': { opacity: 1, transform: 'translateY(0)' }
-                                            },
-                                            '&::placeholder': { opacity: 0.1 }
-                                        }
-                                    }}
-                                />
-                            )}
-                            <TextField
-                                fullWidth
-                                multiline
-                                minRows={12}
-                                maxRows={20}
-                                placeholder="Start typing your brilliance..."
-                                value={content}
-                                onChange={(e) => setContent(e.target.value)}
-                                variant="standard"
-                                InputProps={{
-                                    disableUnderline: true,
-                                    sx: { 
-                                        fontSize: '1.1rem', 
-                                        lineHeight: 1.6,
-                                        color: 'rgba(255, 255, 255, 0.7)',
-                                        fontFamily: 'var(--font-satoshi)',
-                                        '&::placeholder': { opacity: 0.1 }
-                                    }
-                                }}
-                                inputProps={{
-                                    maxLength: MAX_CONTENT_LENGTH
-                                }}
-                            />
-                        </Box>
-
-                        <Box sx={{ 
-                            p: 3, 
-                            bgcolor: '#1C1A18', 
-                            borderTop: '1px solid rgba(255, 255, 255, 0.05)',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                        }}>
-                            <Stack direction="row" spacing={2} alignItems="center">
-                                <Box sx={{ display: 'flex', color: 'rgba(255, 255, 255, 0.3)' }}>
-                                    <Shield size={16} />
-                                    <Typography variant="caption" sx={{ ml: 1, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                        Public & Anonymous
-                                    </Typography>
-                                </Box>
-                                <Box sx={{ display: 'flex', color: 'var(--color-secondary)', alignItems: 'center' }}>
-                                    <Clock size={16} />
-                                    <Typography variant="caption" sx={{ ml: 1, fontWeight: 800 }}>
-                                        Expires in {LIFESPAN_OPTIONS.find(o => o.value === lifespanMs)?.label || 'Custom'}
-                                    </Typography>
-                                </Box>
-                            </Stack>
-
-                            <Box sx={{ textAlign: 'right' }}>
-                                <Typography variant="caption" sx={{ display: 'block', mb: 1, opacity: 0.4, fontWeight: 700 }}>
-                                    ONCE SHARED, THIS NOTE IS LOCKED.
-                                </Typography>
-                                    <Button
-                                        onClick={handleCreateAndCopyLink}
-                                        disabled={isCreating || !title.trim() || !content.trim()}
-                                        variant="contained"
-                                        color="secondary"
-                                        sx={{ 
-                                            borderRadius: '100px',
-                                            px: 4,
-                                            py: 1.5,
-                                            fontWeight: 900,
-                                            bgcolor: 'var(--color-secondary)',
-                                            boxShadow: `0 10px 30px ${alpha('#EC4899', 0.3)}`,
-                                            '&:hover': {
-                                                transform: 'translateY(-2px)',
-                                                bgcolor: '#D946EF',
-                                                boxShadow: `0 15px 40px ${alpha('#EC4899', 0.5)}`,
-                                            }
-                                        }}
-                                    >
-                                        {isCreating ? (
-                                            <CircularProgress size={20} color="inherit" />
-                                        ) : (
-                                            <>
-                                                {copiedId ? <CheckIcon size={18} /> : <Share2 size={18} />}
-                                                <Box component="span" sx={{ ml: 1 }}>{copiedId ? 'LINK COPIED' : 'COPY LINK'}</Box>
-                                            </>
-                                        )}
-                                    </Button>
-                            </Box>
-                        </Box>
-                    </Paper>
-
-                    {/* Bottom CTA */}
-                    <Box sx={{ mt: 4, textAlign: 'center' }}>
-                        <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.3)', display: 'block', mb: 2, fontWeight: 700, letterSpacing: '0.1em' }}>
-                            WANT TO KEEP YOUR NOTES FOREVER?
-                        </Typography>
-                        <Button 
-                            variant="outlined"
-                            onClick={() => openIDMWindow()}
-                            sx={{ 
-                                borderRadius: '100px', 
-                                px: 6,
-                                py: 2,
-                                border: `1px solid ${alpha(theme.palette.secondary.main, 0.3)}`,
-                                color: theme.palette.secondary.main,
-                                fontWeight: 900,
-                                '&:hover': {
-                                    bgcolor: alpha(theme.palette.secondary.main, 0.05),
-                                    borderColor: theme.palette.secondary.main
-                                }
-                            }}
-                        >
-                            <Zap size={18} style={{ marginRight: 8 }} />
-                            UPGRADE TO SOVEREIGN ACCOUNT
-                        </Button>
-                    </Box>
+                    <GhostComposer
+                        ref={composerRef}
+                        lifespanMs={lifespanMs}
+                        onOpenSettings={() => setIsSettingsOpen(true)}
+                        onOpenIDMWindow={openIDMWindow}
+                        onCreate={handleCreateAndCopyLink}
+                    />
                 </Grid>
 
                 {/* Sidebar History */}

@@ -22,6 +22,7 @@ import { Route as LandingRouteImport } from './routes/landing'
 import { Route as ExtensionsRouteImport } from './routes/extensions'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SharedIndexRouteImport } from './routes/shared.index'
 import { Route as SharedNoteidRouteImport } from './routes/shared.$noteid'
 import { Route as NotesIdRouteImport } from './routes/notes.$id'
 import { Route as AdminMessagesRouteImport } from './routes/admin/messages'
@@ -93,6 +94,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SharedIndexRoute = SharedIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SharedRoute,
+} as any)
 const SharedNoteidRoute = SharedNoteidRouteImport.update({
   id: '/$noteid',
   path: '/$noteid',
@@ -136,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/admin/messages': typeof AdminMessagesRoute
   '/notes/$id': typeof NotesIdRouteWithChildren
   '/shared/$noteid': typeof SharedNoteidRouteWithChildren
+  '/shared/': typeof SharedIndexRoute
   '/notes/$id/$attachmentId': typeof NotesIdAttachmentIdRoute
   '/shared/$noteid/$key': typeof SharedNoteidKeyRoute
 }
@@ -150,12 +157,12 @@ export interface FileRoutesByTo {
   '/popout': typeof PopoutRoute
   '/reset': typeof ResetRoute
   '/settings': typeof SettingsRoute
-  '/shared': typeof SharedRouteWithChildren
   '/tags': typeof TagsRoute
   '/verify': typeof VerifyRoute
   '/admin/messages': typeof AdminMessagesRoute
   '/notes/$id': typeof NotesIdRouteWithChildren
   '/shared/$noteid': typeof SharedNoteidRouteWithChildren
+  '/shared': typeof SharedIndexRoute
   '/notes/$id/$attachmentId': typeof NotesIdAttachmentIdRoute
   '/shared/$noteid/$key': typeof SharedNoteidKeyRoute
 }
@@ -177,6 +184,7 @@ export interface FileRoutesById {
   '/admin/messages': typeof AdminMessagesRoute
   '/notes/$id': typeof NotesIdRouteWithChildren
   '/shared/$noteid': typeof SharedNoteidRouteWithChildren
+  '/shared/': typeof SharedIndexRoute
   '/notes/$id/$attachmentId': typeof NotesIdAttachmentIdRoute
   '/shared/$noteid/$key': typeof SharedNoteidKeyRoute
 }
@@ -199,6 +207,7 @@ export interface FileRouteTypes {
     | '/admin/messages'
     | '/notes/$id'
     | '/shared/$noteid'
+    | '/shared/'
     | '/notes/$id/$attachmentId'
     | '/shared/$noteid/$key'
   fileRoutesByTo: FileRoutesByTo
@@ -213,12 +222,12 @@ export interface FileRouteTypes {
     | '/popout'
     | '/reset'
     | '/settings'
-    | '/shared'
     | '/tags'
     | '/verify'
     | '/admin/messages'
     | '/notes/$id'
     | '/shared/$noteid'
+    | '/shared'
     | '/notes/$id/$attachmentId'
     | '/shared/$noteid/$key'
   id:
@@ -239,6 +248,7 @@ export interface FileRouteTypes {
     | '/admin/messages'
     | '/notes/$id'
     | '/shared/$noteid'
+    | '/shared/'
     | '/notes/$id/$attachmentId'
     | '/shared/$noteid/$key'
   fileRoutesById: FileRoutesById
@@ -352,6 +362,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/shared/': {
+      id: '/shared/'
+      path: '/'
+      fullPath: '/shared/'
+      preLoaderRoute: typeof SharedIndexRouteImport
+      parentRoute: typeof SharedRoute
+    }
     '/shared/$noteid': {
       id: '/shared/$noteid'
       path: '/$noteid'
@@ -435,10 +452,12 @@ const SharedNoteidRouteWithChildren = SharedNoteidRoute._addFileChildren(
 
 interface SharedRouteChildren {
   SharedNoteidRoute: typeof SharedNoteidRouteWithChildren
+  SharedIndexRoute: typeof SharedIndexRoute
 }
 
 const SharedRouteChildren: SharedRouteChildren = {
   SharedNoteidRoute: SharedNoteidRouteWithChildren,
+  SharedIndexRoute: SharedIndexRoute,
 }
 
 const SharedRouteWithChildren =

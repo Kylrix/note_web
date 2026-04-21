@@ -919,7 +919,7 @@ export const GhostEditor = () => {
                                                             </IconButton>
                                                             <IconButton 
                                                                 size="small" 
-                                                                onClick={() => window.open(`/shared/${note.id}`, '_blank')}
+                                                                onClick={() => window.open(`/shared/${note.id}${note.decryptionKey ? `/${note.decryptionKey}` : ''}`, '_blank')}
                                                                 sx={{ color: theme.palette.secondary.main }}
                                                             >
                                                                 <ExternalLink size={14} />

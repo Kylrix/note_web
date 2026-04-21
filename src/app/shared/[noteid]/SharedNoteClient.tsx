@@ -674,6 +674,36 @@ export default function SharedNoteClient({ noteId, initialKey }: SharedNoteClien
 
   const verifiedNoteMeta = parseSharedNoteMeta(verifiedNote);
   const noteLooksEncrypted = (verifiedNoteMeta.isEncrypted && verifiedNoteMeta.encryptionVersion === 'T4') || verifiedNoteMeta.isGhost;
+  const shouldShowError = Boolean(error && (!verifiedNote || !verifiedNoteMeta.clientDecrypted));
+
+  if (shouldShowError) {
+    return (
+      <Box sx={{ minHeight: '100vh', bgcolor: '#0A0908', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 4 }}>
+        <Box sx={{ maxWidth: 420, width: '100%', textAlign: 'center' }}>
+          <Typography variant="h5" sx={{ fontWeight: 900, mb: 2, fontFamily: 'var(--font-clash)', color: 'white' }}>
+            Unable to open shared note
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.5)', mb: 3 }}>
+            {error}
+          </Typography>
+          <Button
+            variant="contained"
+            onClick={() => fetchSharedNote(true)}
+            sx={{
+              borderRadius: '12px',
+              bgcolor: '#6366F1',
+              color: '#000',
+              fontWeight: 700,
+              '&:hover': { bgcolor: alpha('#6366F1', 0.8) }
+            }}
+          >
+            Retry loading note
+          </Button>
+        </Box>
+      </Box>
+    );
+  }
+
   if (!verifiedNoteMeta.clientDecrypted && noteLooksEncrypted) {
     return (
       <Box sx={{ minHeight: '100vh', bgcolor: '#0A0908', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 4 }}>

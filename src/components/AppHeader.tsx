@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   AppBar, 
+  Collapse,
   Toolbar, 
   Box, 
   Typography, 
@@ -162,13 +163,14 @@ export default function AppHeader({ className }: AppHeaderProps) {
       position="fixed" 
       elevation={0}
       className={className}
-      sx={{ 
-        zIndex: 1201,
-        bgcolor: 'var(--color-surface)',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-        backgroundImage: 'none',
-        boxShadow: 'inset 0 -1px 0 rgba(0, 0, 0, 0.4)'
-      }}
+        sx={{ 
+          zIndex: 1201,
+          bgcolor: 'var(--color-surface)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+          backgroundImage: 'none',
+          boxShadow: 'inset 0 -1px 0 rgba(0, 0, 0, 0.4)',
+          overflow: 'visible'
+        }}
     >
       <Toolbar sx={{ 
         gap: 3, 
@@ -377,18 +379,23 @@ export default function AppHeader({ className }: AppHeaderProps) {
           </MenuItem>
         </Menu>
 
-        <AICommandModal 
-          isOpen={isAIModalOpen} 
-          onClose={() => setIsAIModalOpen(false)} 
-        />
+      <AICommandModal 
+        isOpen={isAIModalOpen} 
+        onClose={() => setIsAIModalOpen(false)} 
+      />
 
-        <EcosystemPortal 
-          open={isEcosystemPortalOpen} 
-          onClose={() => setIsEcosystemPortalOpen(false)} 
-        />
+      <Collapse in={isEcosystemPortalOpen} timeout={220} unmountOnExit>
+        <Box sx={{ px: { xs: 1.5, md: 4 }, pb: 2 }}>
+          <EcosystemPortal
+            open={isEcosystemPortalOpen}
+            onClose={() => setIsEcosystemPortalOpen(false)}
+            embedded
+          />
+        </Box>
+      </Collapse>
 
-        <WalletSidebar
-          isOpen={isWalletOpen}
+      <WalletSidebar
+        isOpen={isWalletOpen}
           onClose={() => setIsWalletOpen(false)}
         />
       </Toolbar>

@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, lazy, Suspense, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { getCurrentUser, getUser, createUser, updateUser, account } from '@/lib/appwrite';
+import { getCurrentUser, getCurrentUserSnapshot, getUser, createUser, updateUser, account } from '@/lib/appwrite';
 import { getEffectiveUsername } from '@/lib/utils';
 import { GhostNoteClaimer } from '@/components/landing/GhostNoteClaimer';
 
@@ -41,8 +41,8 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(() => getCurrentUserSnapshot());
+  const [isLoading, setIsLoading] = useState<boolean>(() => !getCurrentUserSnapshot());
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [idmWindowOpen, setIDMWindowOpen] = useState(false);
   const [emailVerificationReminderDismissed, setEmailVerificationReminderDismissed] = useState(false);
@@ -124,7 +124,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } else {
         setUser(null);
       }
-      setIsLoading(false);
       return currentUser;
     } catch (error: any) {
       // Check for auth=success signal in URL
@@ -152,54 +151,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
-  // Silent session discovery via iframe
-  const attemptSilentAuth = useCallback(async () => {
-    if (typeof window === 'undefined') return;
-
-    // Skip if already authenticated
-    if (user) return;
-
-    const authSubdomain = process.env.NEXT_PUBLIC_AUTH_SUBDOMAIN || 'accounts';
-    const domain = process.env.NEXT_PUBLIC_DOMAIN || 'kylrix.space';
-    if (!authSubdomain || !domain) return;
-
-    return new Promise<void>((resolve) => {
-      const iframe = document.createElement('iframe');
-      iframe.src = `https://${authSubdomain}.${domain}/silent-check`;
-      iframe.style.display = 'none';
-
-      const timeout = setTimeout(() => {
-        cleanup();
-        resolve();
-      }, 5000);
-
-      const handleIframeMessage = (event: MessageEvent) => {
-        if (event.origin !== `https://${authSubdomain}.${domain}`) return;
-
-        if (event.data?.type === 'idm:auth-status' && event.data.status === 'authenticated') {
-          console.log('Silent auth discovered active session');
-          refreshUser();
-          cleanup();
-          resolve();
-        } else if (event.data?.type === 'idm:auth-status') {
-          cleanup();
-          resolve();
-        }
-      };
-
-      const cleanup = () => {
-        clearTimeout(timeout);
-        window.removeEventListener('message', handleIframeMessage);
-        if (document.body.contains(iframe)) {
-          document.body.removeChild(iframe);
-        }
-      };
-
-      window.addEventListener('message', handleIframeMessage);
-      document.body.appendChild(iframe);
-    });
-  }, [user, refreshUser]);
-
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const dismissed = localStorage.getItem('emailVerificationReminderDismissed');
@@ -213,16 +164,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (initAuthStarted.current) return;
     initAuthStarted.current = true;
 
-    const initAuth = async () => {
-      const localUser = await refreshUser();
-      if (!localUser) {
-        // Only attempt silent discovery if we definitely don't have a session locally
-        await attemptSilentAuth();
-      }
-    };
-
-    initAuth();
-  }, [refreshUser, attemptSilentAuth]);
+    void refreshUser();
+  }, [refreshUser]);
 
   useEffect(() => {
     let lastRefreshTime = Date.now();

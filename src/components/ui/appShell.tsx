@@ -1,11 +1,11 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { getCurrentUser } from "@/lib/appwrite";
 import { useAuth } from "./AuthContext";
 import Navigation from "../Navigation";
 import QuickCreateFab from "./QuickCreateFab";
-import { Box, CircularProgress, Typography } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 
 const PUBLIC_ROUTES = [
   "/reset", "/verify", "/landing"
@@ -23,22 +23,17 @@ export default function AppShell({ children }: AppShellProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { openIDMWindow, idmWindowOpen } = useAuth();
-  const [authChecked, setAuthChecked] = useState(false);
-
 
   useEffect(() => {
     if (isPublicRoute(pathname)) {
-      setAuthChecked(true);
       return;
     }
     getCurrentUser()
       .then(user => {
         if (!user) openIDMWindow();
-        setAuthChecked(true);
       })
       .catch(() => {
         openIDMWindow();
-        setAuthChecked(true);
       });
   }, [pathname, openIDMWindow]);
 
@@ -61,37 +56,6 @@ export default function AppShell({ children }: AppShellProps) {
   const handleCreateLinkNote = () => {
     console.log('Creating link note...');
   };
-
-  if (!authChecked) {
-    return (
-      <Box 
-        sx={{ 
-          display: 'flex', 
-          flexDirection: 'column',
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          minHeight: '100vh',
-          gap: 3,
-          bgcolor: 'rgba(15, 13, 12, 0.95)',
-          backdropFilter: 'blur(25px) saturate(180%)',
-        }}
-      >
-        <CircularProgress size={48} thickness={4} sx={{ color: 'var(--color-primary)' }} />
-        <Typography 
-          variant="body1" 
-          sx={{ 
-            color: 'rgba(255, 255, 255, 0.6)',
-            fontFamily: 'var(--font-clash)',
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            letterSpacing: '0.1em'
-          }}
-        >
-          Initializing Note...
-        </Typography>
-      </Box>
-    );
-  }
 
   return (
     <Box sx={{ position: 'relative', minHeight: '100vh' }}>

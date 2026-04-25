@@ -102,7 +102,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   useEffect(() => { notesRef.current = notes; }, [notes]);
   useEffect(() => { cursorRef.current = cursor; }, [cursor]);
 
-  const PAGE_SIZE = Number(process.env.NEXT_PUBLIC_NOTES_PAGE_SIZE || 50);
+  const PAGE_SIZE = Number(process.env.NEXT_PUBLIC_NOTES_PAGE_SIZE || 20);
 
   const fetchBatch = useCallback(async (reset: boolean = false) => {
     if (isFetchingRef.current) return;
@@ -139,6 +139,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
           limit: PAGE_SIZE,
           cursor: null,
           userId: user?.$id,
+          hydrateTags: false,
         });
         
         const optimizedRes = await fetchOptimized(INITIAL_NOTES_CACHE_KEY, fetcher);
@@ -162,6 +163,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
           limit: PAGE_SIZE,
           cursor: reset ? null : (cursorRef.current || null),
           userId: user?.$id,
+          hydrateTags: false,
         });
 
         const batch = (res?.documents || []).map((note: Notes) => normalizeVisibility(note)) as Notes[];

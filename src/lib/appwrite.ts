@@ -33,7 +33,7 @@ const functions = new Functions(client);
 const realtime = new Realtime(client);
 const CURRENT_USER_CACHE_KEY = 'kylrix_note_current_user_v2';
 const CURRENT_USER_CACHE_TTL = 5 * 60 * 1000;
-const CURRENT_USER_REQUEST_TIMEOUT = 8000;
+const CURRENT_USER_REQUEST_TIMEOUT = 2500;
 
 type CachedCurrentUser = {
   user: Users | null;
@@ -85,6 +85,10 @@ const getCachedCurrentUser = () => {
   currentUserCache = persistent;
   return persistent.user;
 };
+
+export function getCurrentUserSnapshot(): Users | null {
+  return getCachedCurrentUser();
+}
 
 const setCachedCurrentUser = (user: Users | null) => {
   const cache: CachedCurrentUser = { user, expiresAt: Date.now() + CURRENT_USER_CACHE_TTL };

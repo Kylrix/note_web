@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/ui/AuthContext';
 import { GhostEditor } from '@/components/landing/GhostEditor';
@@ -19,22 +19,12 @@ import { DynamicSidebarProvider, DynamicSidebar } from '@/components/ui/DynamicS
 export default function Home() {
   const router = useRouter();
   const { isAuthenticated, isLoading, openIDMWindow, isAuthenticating } = useAuth();
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
     if (!isLoading && isAuthenticated) {
       router.replace('/notes');
     }
   }, [isAuthenticated, isLoading, router]);
-
-  if (!mounted || isLoading) {
-    return (
-      <Box sx={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', bgcolor: '#0F0D0C' }}>
-        <CircularProgress color="primary" />
-      </Box>
-    );
-  }
 
   // If authenticated, we show nothing (it will redirect)
   if (isAuthenticated) return null;

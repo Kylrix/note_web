@@ -4,12 +4,13 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/ui/AuthContext';
 import { GhostEditor } from '@/components/landing/GhostEditor';
-import { 
-    Box, 
-    AppBar, 
-    Toolbar, 
-    Stack, 
-    Typography
+import {
+  Box,
+  AppBar,
+  Toolbar,
+  Stack,
+  Typography,
+  CircularProgress,
 } from '@mui/material';
 import Logo from '@/components/common/Logo';
 import { Button } from '@/components/ui/Button';
@@ -27,7 +28,23 @@ export default function Home() {
     }
   }, [isAuthenticated, isLoading, router]);
 
-  const showWorkspace = mounted && !isLoading && !isAuthenticated;
+  if (!mounted || isLoading) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          minHeight: '100vh',
+          alignItems: 'center',
+          justifyContent: 'center',
+          bgcolor: '#0F0D0C',
+        }}
+      >
+        <CircularProgress color="primary" />
+      </Box>
+    );
+  }
+
+  if (isAuthenticated) return null;
 
   return (
     <DynamicSidebarProvider>
@@ -73,29 +90,7 @@ export default function Home() {
         </AppBar>
 
         <Box component="main" sx={{ flex: 1, py: 4 }}>
-          {showWorkspace ? (
-            <GhostEditor />
-          ) : (
-            <Box
-              sx={{
-                minHeight: '60vh',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                px: 3,
-                textAlign: 'center'
-              }}
-            >
-              <Box sx={{ maxWidth: 520 }}>
-                <Typography variant="h4" sx={{ mb: 1, fontWeight: 900 }}>
-                  Opening your workspace
-                </Typography>
-                <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.65)' }}>
-                  Pulling your session and notes into view.
-                </Typography>
-              </Box>
-            </Box>
-          )}
+          <GhostEditor />
         </Box>
 
         <Box component="footer" sx={{ borderTop: '1px solid rgba(255, 255, 255, 0.05)', py: 6, textAlign: 'center' }}>

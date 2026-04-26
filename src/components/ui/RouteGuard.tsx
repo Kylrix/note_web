@@ -26,6 +26,13 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({ children }) => {
   const pathname = usePathname();
   const router = useRouter();
 
+  // Optimistic redirect: if we're on landing and have a session hint, move instantly
+  useEffect(() => {
+    if (typeof window !== 'undefined' && pathname === '/' && localStorage.getItem('kylrix_auth_active') === 'true') {
+      router.replace('/notes');
+    }
+  }, [pathname, router]);
+
   useEffect(() => {
     if (isLoading) {
       return;

@@ -42,7 +42,11 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Start with a heuristic isLoading based on localStorage to avoid initial flicker
+  const [isLoading, setIsLoading] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return localStorage.getItem('kylrix_auth_active') === 'true';
+  });
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [idmWindowOpen, setIDMWindowOpen] = useState(false);
   const [emailVerificationReminderDismissed, setEmailVerificationReminderDismissed] = useState(false);
@@ -56,6 +60,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const currentUser = await getCurrentUser();
       if (currentUser) {
+        // Set persistent flag for optimistic auth on next reload
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('kylrix_auth_active', 'true');
+        }
+        
         // Clear the auth=success param from URL if it exists
         if (typeof window !== 'undefined' && window.location.search.includes('auth=success')) {
           const url = new URL(window.location.href);
@@ -110,6 +119,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         setUser({ ...currentUser, ...dbUser });
       } else {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('kylrix_auth_active');
+        }
         setUser(null);
       }
       return currentUser;
@@ -127,6 +139,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const isNetworkError = !error.response && (error.message?.includes('Network Error') || error.message?.includes('Failed to fetch'));
 
       if (!isNetworkError) {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('kylrix_auth_active');
+        }
         setUser(null);
       } else {
         console.warn('Network issue detected during auth refresh. Retaining last known state.');
@@ -280,6 +295,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [idmWindowOpen, refreshUser]);
 
   const login = useCallback((userData: User) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('kylrix_auth_active', 'true');
+    }
     setUser(userData);
   }, []);
 
@@ -292,6 +310,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Clear any local storage related to authentication
       if (typeof window !== 'undefined') {
         localStorage.removeItem('user_cache');
+        localStorage.removeItem('kylrix_auth_active');
         sessionStorage.removeItem('auth_temp_data');
       }
     } catch (error: any) {
@@ -299,6 +318,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       // Always clear local user state regardless of logout success
       setUser(null);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('kylrix_auth_active');
+      }
       // Clear any temporary auth state
       setIDMWindowOpen(false);
     }

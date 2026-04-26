@@ -22,44 +22,26 @@ function isPublicRoute(path: string): boolean {
 }
 
 export const RouteGuard: React.FC<RouteGuardProps> = ({ children }) => {
-  const { isLoading, isAuthenticated, openIDMWindow } = useAuth();
+  const { isAuthReady, isAuthenticated, openIDMWindow } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
 
-  // Optimistic redirect: if we're on landing and have a session hint, move instantly
   useEffect(() => {
-    if (typeof window !== 'undefined' && pathname === '/' && localStorage.getItem('kylrix_auth_active') === 'true') {
-      router.replace('/notes');
-    }
-  }, [pathname, router]);
-
-  useEffect(() => {
-    if (isLoading) {
-      return;
-    }
+    if (!isAuthReady) return;
 
     const publicRoute = isPublicRoute(pathname);
     
-    // If user is not authenticated and trying to access protected route
+    // Protected route check
     if (!isAuthenticated && !publicRoute) {
       openIDMWindow();
       return;
     }
 
-    // If user is authenticated and on landing page, redirect to notes
+    // Landing to Notes redirect
     if (isAuthenticated && pathname === '/') {
-      // Use silent redirect without global loading
       router.replace('/notes');
-      return;
     }
-
-  }, [isLoading, isAuthenticated, pathname, router, openIDMWindow]);
-
-  // For protected routes when user is not authenticated, stay on current page and show IDM window
-  const publicRoute = isPublicRoute(pathname);
-  if (!isAuthenticated && !publicRoute) {
-    return <>{children}</>;
-  }
+  }, [isAuthReady, isAuthenticated, pathname, router, openIDMWindow]);
 
   return <>{children}</>;
 };

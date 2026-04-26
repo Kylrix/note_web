@@ -61,6 +61,8 @@ const GHOST_PREF_LIFESPAN = 'kylrix_ghost_pref_lifespan_v2';
 const MAX_LIFESPAN_DAYS = 7;
 const MAX_LIFESPAN_MS = MAX_LIFESPAN_DAYS * 24 * 60 * 60 * 1000;
 const MAX_CONTENT_LENGTH = 65000;
+const SURFACE = '#161514';
+const SURFACE_HOVER = '#1F1D1B';
 
 interface GhostNoteRef {
     id: string;
@@ -430,7 +432,7 @@ const GhostComposer = React.memo(forwardRef<GhostComposerHandle, GhostComposerPr
             p: 0,
             borderRadius: '32px',
             overflow: 'hidden',
-            bgcolor: '#161412',
+            bgcolor: SURFACE,
             border: '1px solid rgba(255, 255, 255, 0.08)',
             boxShadow: '0 20px 40px -15px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.05), inset 0 -1px 0 rgba(0,0,0,0.5)',
             backdropFilter: 'none',
@@ -580,7 +582,7 @@ const GhostComposer = React.memo(forwardRef<GhostComposerHandle, GhostComposerPr
 
             <Box sx={{
                 p: 3,
-                bgcolor: '#1C1A18',
+                bgcolor: SURFACE_HOVER,
                 borderTop: '1px solid rgba(255, 255, 255, 0.05)',
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -831,7 +833,7 @@ const GhostSparkShelf = React.memo(({
                                 key={note.id}
                                 onContextMenu={(e) => onContextMenu(e, note.id)}
                                 sx={{
-                                    bgcolor: '#1C1A18',
+                                    bgcolor: SURFACE_HOVER,
                                     borderRadius: '20px',
                                     border: '1px solid rgba(255, 255, 255, 0.05)',
                                     transition: 'all 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -839,7 +841,7 @@ const GhostSparkShelf = React.memo(({
                                     backgroundImage: 'none',
                                     '&:hover': {
                                         transform: 'translateX(4px)',
-                                        bgcolor: '#1C1A18',
+                                        bgcolor: SURFACE_HOVER,
                                         borderColor: alpha(theme.palette.secondary.main, 0.4),
                                         boxShadow: `0 20px 40px -10px rgba(0,0,0,0.5), 0 0 10px ${alpha(theme.palette.secondary.main, 0.1)}`
                                     }
@@ -902,7 +904,7 @@ const GhostSparkShelf = React.memo(({
                                     opacity: 0.6,
                                     '&:hover': {
                                         opacity: 1,
-                                        bgcolor: '#161412',
+                                        bgcolor: SURFACE,
                                         borderColor: alpha(theme.palette.error.main, 0.3)
                                     }
                                 }}
@@ -960,7 +962,7 @@ const GhostSparkShelf = React.memo(({
                     paper: {
                         sx: {
                             minWidth: 180,
-                            bgcolor: '#1C1A18',
+                            bgcolor: SURFACE_HOVER,
                             backdropFilter: 'none',
                             border: '1px solid rgba(255, 255, 255, 0.1)',
                             borderRadius: '12px',
@@ -991,7 +993,7 @@ const GhostSparkShelf = React.memo(({
                 </MenuItem>
             </Menu>
 
-            <Box sx={{ mt: 4, p: 3, borderRadius: '24px', bgcolor: '#1C1A18', border: `1px solid ${alpha(theme.palette.secondary.main, 0.2)}`, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }}>
+            <Box sx={{ mt: 4, p: 3, borderRadius: '24px', bgcolor: SURFACE_HOVER, border: `1px solid ${alpha(theme.palette.secondary.main, 0.2)}`, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }}>
                 <Typography variant="subtitle2" sx={{ fontWeight: 900, mb: 1, color: theme.palette.secondary.main }}>
                     Don&apos;t Lose Your Spark!
                 </Typography>
@@ -1269,7 +1271,7 @@ export const GhostEditor = () => {
                 sx={{ 
                     mb: 3, 
                     borderRadius: '16px', 
-                    bgcolor: '#161412',
+                    bgcolor: SURFACE,
                     color: theme.palette.info.main,
                     border: '1px solid rgba(255, 255, 255, 0.05)',
                     boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
@@ -1314,7 +1316,7 @@ export const GhostEditor = () => {
                         <Paper sx={{ 
                             p: 3, 
                             borderRadius: '32px', 
-                            bgcolor: '#161412',
+                            bgcolor: SURFACE,
                             border: '1px solid rgba(255, 255, 255, 0.05)',
                             boxShadow: '0 20px 40px -15px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.05), inset 0 -1px 0 rgba(0,0,0,0.5)',
                             height: 'fit-content'
@@ -1354,7 +1356,7 @@ export const GhostEditor = () => {
                 onClose={() => setIsSettingsOpen(false)}
                 PaperProps={{
                     sx: {
-                        bgcolor: '#161412',
+                        bgcolor: SURFACE,
                         backdropFilter: 'none',
                         border: '1px solid rgba(255, 255, 255, 0.1)',
                         boxShadow: '0 40px 80px -20px rgba(0,0,0,0.9), inset 0 1px 1px rgba(255,255,255,0.05)',

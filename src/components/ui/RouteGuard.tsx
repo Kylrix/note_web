@@ -10,7 +10,6 @@ interface RouteGuardProps {
 
 const PUBLIC_ROUTES = [
   '/',
-  '/landing',
   '/signup',
   '/reset',
   '/verify'

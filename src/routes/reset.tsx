@@ -14,8 +14,8 @@ function ResetPage() {
           <Typography sx={{ color: 'rgba(255,255,255,0.7)' }}>
             Use this entry point to recover your account or continue the password reset flow.
           </Typography>
-          <Button href="/landing" variant="outlined" sx={{ alignSelf: 'flex-start', color: 'white', borderColor: 'rgba(255,255,255,0.12)' }}>
-            Back to landing
+          <Button href="/" variant="outlined" sx={{ alignSelf: 'flex-start', color: 'white', borderColor: 'rgba(255,255,255,0.12)' }}>
+            Back to app
           </Button>
         </Stack>
       </Paper>

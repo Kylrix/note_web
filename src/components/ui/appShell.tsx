@@ -8,7 +8,7 @@ import QuickCreateFab from "./QuickCreateFab";
 import { Box, Typography } from "@mui/material";
 
 const PUBLIC_ROUTES = [
-  "/reset", "/verify", "/landing"
+  "/reset", "/verify"
 ];
 
 function isPublicRoute(path: string) {

@@ -14,8 +14,8 @@ function MasterpassPage() {
           <Typography sx={{ color: 'rgba(255,255,255,0.7)' }}>
             This screen is the entry point for master password setup and recovery flows.
           </Typography>
-          <Button href="/landing" variant="outlined" sx={{ alignSelf: 'flex-start', color: 'white', borderColor: 'rgba(255,255,255,0.12)' }}>
-            Back to landing
+          <Button href="/" variant="outlined" sx={{ alignSelf: 'flex-start', color: 'white', borderColor: 'rgba(255,255,255,0.12)' }}>
+            Back to app
           </Button>
         </Stack>
       </Paper>

@@ -16,8 +16,8 @@ function VerifyPage() {
             Your account is protected by email verification. Return to the app after you confirm the message in your inbox.
           </Typography>
           <EmailVerificationReminder />
-          <Button href="/landing" variant="outlined" sx={{ alignSelf: 'flex-start', color: 'white', borderColor: 'rgba(255,255,255,0.12)' }}>
-            Back to landing
+          <Button href="/" variant="outlined" sx={{ alignSelf: 'flex-start', color: 'white', borderColor: 'rgba(255,255,255,0.12)' }}>
+            Back to app
           </Button>
         </Stack>
       </Paper>

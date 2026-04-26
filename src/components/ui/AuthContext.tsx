@@ -249,7 +249,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         idmWindowRef.current.close();
       }
       idmWindowRef.current = null;
-      if (pathname === '/' || pathname === '/landing') {
+      if (pathname === '/') {
         router.replace('/notes');
       }
     };
@@ -378,7 +378,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (!authSubdomain || !domain) {
           console.error('IDM configuration missing: AUTH_SUBDOMAIN or DOMAIN not set');
           setIsAuthenticating(false);
-          router.replace('/landing');
+          router.replace('/');
           return;
         }
 
@@ -425,7 +425,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } catch (error: any) {
         console.error('Failed to initiate IDM flow:', error);
         setIsAuthenticating(false);
-        router.replace('/landing');
+        router.replace('/');
       }
     };
 
@@ -440,7 +440,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIDMWindowOpen(false);
     setIsAuthenticating(false);
     if (!user) {
-      router.replace('/landing');
+      router.replace('/');
     }
   }, [router, user]);
 

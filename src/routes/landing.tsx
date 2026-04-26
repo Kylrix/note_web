@@ -1,6 +1,16 @@
-import { createFileRoute } from '@tanstack/react-router'
-import LandingPage from '@/app/landing/page'
+import { useEffect } from 'react'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/landing')({
-  component: LandingPage,
+  component: LandingRedirect,
 })
+
+function LandingRedirect() {
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    navigate({ to: '/', replace: true })
+  }, [navigate])
+
+  return null
+}

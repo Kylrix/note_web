@@ -187,7 +187,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (event.origin !== `https://${authSubdomain}.${domain}`) return;
 
         if (event.data?.type === 'idm:auth-status' && event.data.status === 'authenticated') {
-          const newUser = await refreshUser(false, 0, true);
+          const newUser = await refreshUser(true, 0, true);
           cleanup();
           resolve(newUser);
         } else if (event.data?.type === 'idm:auth-status') {
@@ -216,9 +216,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const initAuth = async () => {
       setIsLoading(true);
       try {
-        const localUser = await refreshUser(false, 0, true);
+        const localUser = await refreshUser(true, 0, true);
         if (!localUser) {
           await attemptSilentAuth();
+          await refreshUser(true, 0, true);
         }
       } finally {
         setIsLoading(false);

@@ -33,11 +33,8 @@ export function ThemeProvider({
   ...props
 }: ThemeProviderProps) {
   const [theme, setThemeState] = useState<Theme>(defaultTheme);
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-    
     // Get theme from localStorage or system preference
     const savedTheme = localStorage.getItem(storageKey) as Theme;
     if (savedTheme) {
@@ -49,8 +46,6 @@ export function ThemeProvider({
   }, [storageKey]);
 
   useEffect(() => {
-    if (!mounted) return;
-
     const root = window.document.documentElement;
     
     // Remove existing theme classes
@@ -61,7 +56,7 @@ export function ThemeProvider({
     
     // Save to localStorage
     localStorage.setItem(storageKey, theme);
-  }, [theme, storageKey, mounted]);
+  }, [theme, storageKey]);
 
   const toggleTheme = () => {
     setThemeState(prev => prev === 'dark' ? 'light' : 'dark');
@@ -70,11 +65,6 @@ export function ThemeProvider({
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
   };
-
-  // Prevent flash of unstyled content
-  if (!mounted) {
-    return null;
-  }
 
   const value = {
     theme,

@@ -23,6 +23,7 @@ let currentUserInFlight: Promise<Users | null> | null = null;
 const CURRENT_USER_CACHE_TTL = 5000;
 const CURRENT_USER_CACHE_KEY = 'kylrix_note_current_user_v1';
 const CURRENT_USER_EVENT = 'kylrix:note-current-user-changed';
+const SHARED_CURRENT_USER_EVENT = 'kylrix:vault-current-user-changed';
 
 export { client, ID, Query, Permission, Role, OAuthProvider };
 
@@ -92,6 +93,7 @@ function writeCurrentUserSnapshot(user: Users | null) {
     if (!user) {
       localStorage.removeItem(CURRENT_USER_CACHE_KEY);
       window.dispatchEvent(new CustomEvent(CURRENT_USER_EVENT, { detail: null }));
+      window.dispatchEvent(new CustomEvent(SHARED_CURRENT_USER_EVENT, { detail: null }));
       return;
     }
     localStorage.setItem(CURRENT_USER_CACHE_KEY, JSON.stringify({
@@ -99,6 +101,7 @@ function writeCurrentUserSnapshot(user: Users | null) {
       expiresAt: Date.now() + CURRENT_USER_CACHE_TTL,
     }));
     window.dispatchEvent(new CustomEvent(CURRENT_USER_EVENT, { detail: user }));
+    window.dispatchEvent(new CustomEvent(SHARED_CURRENT_USER_EVENT, { detail: user }));
   } catch {
     // best effort
   }

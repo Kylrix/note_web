@@ -1,6 +1,6 @@
 'use client';
 
-import { account, clearKylrixPulse, getCurrentUserSnapshot, getKylrixPulse, getCurrentUser, invalidateCurrentUserCache, onCurrentUserChanged, setCurrentUserSnapshot, setKylrixPulse } from '@/lib/appwrite';
+import { account, clearKylrixPulse, getCurrentUserSnapshot, getKylrixPulse, getCurrentUser, invalidateCurrentUserCache, setCurrentUserSnapshot, setKylrixPulse } from '@/lib/appwrite';
 import { APPWRITE_CONFIG } from '@/lib/appwrite/config';
 
 export interface User {
@@ -21,13 +21,10 @@ export interface AuthState {
 
 type Listener = () => void;
 
-const initialSnapshot = getCurrentUserSnapshot();
-const initialPulse = initialSnapshot ? null : getKylrixPulse();
-
 let state: AuthState = {
-  user: (initialSnapshot as User | null) ?? (initialPulse ? { $id: initialPulse.$id, name: initialPulse.name, isPulse: true, email: null, profilePicId: initialPulse.profilePicId } : null),
-  isLoading: !(initialSnapshot || initialPulse),
-  isAuthenticated: !!(initialSnapshot || initialPulse),
+  user: null,
+  isLoading: true,
+  isAuthenticated: false,
   isAuthenticating: false,
   idmWindowOpen: false,
 };
@@ -36,13 +33,19 @@ const listeners = new Set<Listener>();
 let initialized = false;
 let idmWindowRef: Window | null = null;
 let silentCheckInFlight: Promise<void> | null = null;
+let currentUserEventHandlersRegistered = false;
 
 function emit() {
   listeners.forEach((listener) => listener());
 }
 
 function setState(patch: Partial<AuthState>) {
-  state = { ...state, ...patch, isAuthenticated: !!(patch.user ?? state.user) };
+  const nextUser = patch.user !== undefined ? patch.user : state.user;
+  state = {
+    ...state,
+    ...patch,
+    isAuthenticated: patch.isAuthenticated ?? !!nextUser,
+  };
   emit();
 }
 
@@ -60,13 +63,38 @@ export function getSnapshot() {
 }
 
 export function getServerSnapshot() {
-  return {
-    user: null,
-    isLoading: true,
-    isAuthenticated: false,
+  return state;
+}
+
+function syncCurrentUserState(user: User | null) {
+  if (user) {
+    setCurrentUserSnapshot(user as any);
+    setKylrixPulse(user as any);
+  } else {
+    invalidateCurrentUserCache();
+    clearKylrixPulse();
+  }
+
+  setState({
+    user,
+    isLoading: false,
     isAuthenticating: false,
     idmWindowOpen: false,
+    isAuthenticated: !!user,
+  });
+}
+
+function registerCurrentUserEventListeners() {
+  if (!canUseWindow() || currentUserEventHandlersRegistered) return;
+  currentUserEventHandlersRegistered = true;
+
+  const handleCurrentUserChange = (event: Event) => {
+    const customEvent = event as CustomEvent<User | null>;
+    syncCurrentUserState(customEvent.detail ?? getCurrentUserSnapshot() ?? null);
   };
+
+  window.addEventListener('kylrix:note-current-user-changed', handleCurrentUserChange as EventListener);
+  window.addEventListener('kylrix:vault-current-user-changed', handleCurrentUserChange as EventListener);
 }
 
 export async function refreshUser(force = false): Promise<User | null> {
@@ -76,29 +104,14 @@ export async function refreshUser(force = false): Promise<User | null> {
     }
     const session = await account.get();
     if (session) {
-      setCurrentUserSnapshot(session as any);
-      setKylrixPulse(session as any);
-      setState({
-        user: session as any,
-        isLoading: false,
-      });
+      syncCurrentUserState(session as any);
       return session as any;
     }
 
-    invalidateCurrentUserCache();
-    clearKylrixPulse();
-    setState({
-      user: null,
-      isLoading: false,
-    });
+    syncCurrentUserState(null);
     return null;
   } catch {
-    invalidateCurrentUserCache();
-    clearKylrixPulse();
-    setState({
-      user: null,
-      isLoading: false,
-    });
+    syncCurrentUserState(null);
     return null;
   }
 }
@@ -154,44 +167,30 @@ async function attemptSilentAuth(): Promise<void> {
 export async function initAuth() {
   if (!canUseWindow() || initialized) return;
   initialized = true;
+  registerCurrentUserEventListeners();
 
   const snapshot = getCurrentUserSnapshot();
   if (snapshot) {
-    setState({
-      user: snapshot as any,
-      isLoading: false,
-    });
+    syncCurrentUserState(snapshot as any);
+    return;
   }
 
-  const session = snapshot ?? await refreshUser();
-  if (!session) {
-    await attemptSilentAuth();
-  }
+  setState({ isLoading: true });
+  const session = await refreshUser();
+  if (!session) await attemptSilentAuth();
 }
 
 export function login(user: User) {
-  setCurrentUserSnapshot(user as any);
-  setKylrixPulse(user as any);
-  setState({
-    user,
-    isLoading: false,
-  });
+  syncCurrentUserState(user);
 }
 
 export async function logout() {
   try {
     await account.deleteSession('current');
   } finally {
-    invalidateCurrentUserCache();
-    clearKylrixPulse();
     idmWindowRef?.close?.();
     idmWindowRef = null;
-    setState({
-      user: null,
-      isLoading: false,
-      isAuthenticating: false,
-      idmWindowOpen: false,
-    });
+    syncCurrentUserState(null);
   }
 }
 
@@ -201,10 +200,7 @@ export function openIDMWindow(pathname: string) {
 
   const localSession = getCurrentUserSnapshot();
   if (localSession) {
-    setState({
-      user: localSession as any,
-      isLoading: false,
-    });
+    syncCurrentUserState(localSession as any);
     return;
   }
 
@@ -217,11 +213,7 @@ export function openIDMWindow(pathname: string) {
   void attemptSilentAuth().then(() => {
     const session = getCurrentUserSnapshot();
     if (session) {
-      setState({
-        user: session as any,
-        isLoading: false,
-        isAuthenticating: false,
-      });
+      syncCurrentUserState(session as any);
       return;
     }
 
@@ -252,10 +244,7 @@ export function closeIDMWindow() {
     idmWindowRef.close();
   }
   idmWindowRef = null;
-  setState({
-    isAuthenticating: false,
-    idmWindowOpen: false,
-  });
+  setState({ isAuthenticating: false, idmWindowOpen: false });
 }
 
 export function shouldShowEmailVerificationReminder() {
@@ -269,14 +258,7 @@ export function dismissEmailVerificationReminder() {
 }
 
 export function onAuthSuccessFromAccounts(user: User) {
-  setCurrentUserSnapshot(user as any);
-  setKylrixPulse(user as any);
-  setState({
-    user,
-    isLoading: false,
-    isAuthenticating: false,
-    idmWindowOpen: false,
-  });
+  syncCurrentUserState(user);
 }
 
 if (typeof window !== 'undefined') {
@@ -290,13 +272,5 @@ if (typeof window !== 'undefined') {
     }
     idmWindowRef = null;
     await refreshUser(true);
-  });
-
-  window.addEventListener('kylrix:note-current-user-changed', () => {
-    const snapshot = getCurrentUserSnapshot();
-    setState({
-      user: snapshot as any,
-      isLoading: false,
-    });
   });
 }

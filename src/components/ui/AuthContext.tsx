@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, lazy, Suspense, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { account, getCurrentUser, getKylrixPulse, setKylrixPulse, clearKylrixPulse, invalidateCurrentUserCache } from '@/lib/appwrite';
+import { account, getKylrixPulse, setKylrixPulse, clearKylrixPulse } from '@/lib/appwrite';
 import { GhostNoteClaimer } from '@/components/landing/GhostNoteClaimer';
 
 // Lazy load email verification reminder
@@ -52,10 +52,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const router = useRouter();
   const pathname = usePathname();
 
-  // 2. Background Revalidation (Non-blocking)
-  const refreshUser = useCallback(async (): Promise<User | null> => {
+  const resolveUser = useCallback(async (): Promise<User | null> => {
     try {
-      const session = await getCurrentUser(true);
+      const session = await account.get();
       if (session) {
         setUser(session as any);
         setKylrixPulse(session);
@@ -76,8 +75,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     if (initAuthStarted.current) return;
     initAuthStarted.current = true;
-    refreshUser();
-  }, [refreshUser]);
+    resolveUser();
+  }, [resolveUser]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -85,7 +84,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const login = useCallback((userData: User) => {
-    invalidateCurrentUserCache();
     setKylrixPulse(userData);
     setUser(userData);
   }, []);
@@ -94,7 +92,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       await account.deleteSession('current');
     } finally {
-      invalidateCurrentUserCache();
       setUser(null);
       clearKylrixPulse();
       setIDMWindowOpen(false);
@@ -144,7 +141,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     isAuthenticated: !!user,
     login,
     logout,
-    refreshUser,
+    refreshUser: resolveUser,
     shouldShowEmailVerificationReminder,
     dismissEmailVerificationReminder,
     openIDMWindow,
@@ -155,7 +152,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     isLoading,
     login,
     logout,
-    refreshUser,
+    resolveUser,
     shouldShowEmailVerificationReminder,
     dismissEmailVerificationReminder,
     openIDMWindow,

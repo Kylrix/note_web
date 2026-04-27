@@ -57,6 +57,7 @@ export default function AppHeader({ className }: AppHeaderProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
+  const isPublicRoute = pathname === '/' || pathname.startsWith('/shared/');
 
   useEffect(() => {
     if (searchParams.get('openWallet') === 'true') {
@@ -288,7 +289,7 @@ export default function AppHeader({ className }: AppHeaderProps) {
                 borderRadius="10px"
               />
             </IconButton>
-          ) : isLoading ? (
+          ) : isLoading && !isPublicRoute ? (
             <Box
               sx={{
                 ml: 1,

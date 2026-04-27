@@ -8,8 +8,7 @@ import {
   openIDMWindow,
   shouldShowEmailVerificationReminder,
 } from '@/lib/auth-store';
-import { account, getCurrentUserSnapshot } from '@/lib/appwrite';
-import { APPWRITE_CONFIG } from '@/lib/appwrite/config';
+import { account } from '@/lib/appwrite';
 import { GhostNoteClaimer } from '@/components/landing/GhostNoteClaimer';
 import { EmailVerificationReminder } from './EmailVerificationReminder';
 
@@ -38,10 +37,9 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const initialSnapshot = getCurrentUserSnapshot() as User | null;
-  const [user, setUser] = useState<User | null>(initialSnapshot);
-  const [isLoading, setIsLoading] = useState(!initialSnapshot);
-  const [isAuthenticated, setIsAuthenticated] = useState(!!initialSnapshot);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [idmWindowOpen, setIdmWindowOpen] = useState(false);
 
   useEffect(() => {
@@ -69,20 +67,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     void loadUser();
 
-    const handleAuthSuccess = (event: MessageEvent) => {
-      const expectedOrigin = `https://${APPWRITE_CONFIG.SYSTEM.AUTH_SUBDOMAIN}.${APPWRITE_CONFIG.SYSTEM.DOMAIN}`;
-      if (event.origin !== expectedOrigin) return;
-      if (event.data?.type !== 'idm:auth-success') return;
-
-      setIdmWindowOpen(false);
-      void loadUser();
-    };
-
-    window.addEventListener('message', handleAuthSuccess);
-
     return () => {
       mounted = false;
-      window.removeEventListener('message', handleAuthSuccess);
     };
   }, []);
 

@@ -3,7 +3,6 @@
 import { AuthProvider } from "@/components/ui/AuthContext";
 import { OverlayProvider } from "@/components/ui/OverlayContext";
 import { LoadingProvider } from "@/components/ui/LoadingContext";
-import { RouteGuard } from "@/components/ui/RouteGuard";
 import { ThemeProvider as AppThemeProvider } from "@/components/ThemeProvider";
 import { ToastProvider } from "@/components/ui/Toast";
 import { IslandProvider } from "@/components/ui/DynamicIsland";
@@ -55,9 +54,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
                                                         <OverlayProvider>
                                                             <LoadingProvider>
                                                                 <ContextMenuProvider>
-                                                                    <RouteGuard>
-                                                                        {children}
-                                                                    </RouteGuard>
+                                                                    {children}
                                                                     <Overlay />
                                                                     <GlobalContextMenu />
                                                                     <GlobalShortcuts />

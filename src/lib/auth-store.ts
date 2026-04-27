@@ -34,6 +34,7 @@ let initialized = false;
 let idmWindowRef: Window | null = null;
 let silentCheckInFlight: Promise<void> | null = null;
 let currentUserEventHandlersRegistered = false;
+let isApplyingCurrentUserSnapshot = false;
 
 function emit() {
   listeners.forEach((listener) => listener());
@@ -66,31 +67,14 @@ export function getServerSnapshot() {
   return state;
 }
 
-function syncCurrentUserState(user: User | null) {
-  if (user) {
-    setCurrentUserSnapshot(user as any);
-    setKylrixPulse(user as any);
-  } else {
-    invalidateCurrentUserCache();
-    clearKylrixPulse();
-  }
-
-  setState({
-    user,
-    isLoading: false,
-    isAuthenticating: false,
-    idmWindowOpen: false,
-    isAuthenticated: !!user,
-  });
-}
-
 function registerCurrentUserEventListeners() {
   if (!canUseWindow() || currentUserEventHandlersRegistered) return;
   currentUserEventHandlersRegistered = true;
 
   const handleCurrentUserChange = (event: Event) => {
+    if (isApplyingCurrentUserSnapshot) return;
     const customEvent = event as CustomEvent<User | null>;
-    syncCurrentUserState(customEvent.detail ?? getCurrentUserSnapshot() ?? null);
+    applyCurrentUserState(customEvent.detail ?? getCurrentUserSnapshot() ?? null, false);
   };
 
   window.addEventListener('kylrix:note-current-user-changed', handleCurrentUserChange as EventListener);
@@ -104,16 +88,44 @@ export async function refreshUser(force = false): Promise<User | null> {
     }
     const session = await account.get();
     if (session) {
-      syncCurrentUserState(session as any);
+      applyCurrentUserState(session as any, true);
       return session as any;
     }
 
-    syncCurrentUserState(null);
+    applyCurrentUserState(null, true);
     return null;
   } catch {
-    syncCurrentUserState(null);
+    applyCurrentUserState(null, true);
     return null;
   }
+}
+
+function applyCurrentUserState(user: User | null, emitEvents: boolean) {
+  if (emitEvents) {
+    isApplyingCurrentUserSnapshot = true;
+  }
+
+  try {
+    if (user) {
+      setCurrentUserSnapshot(user as any, emitEvents);
+      setKylrixPulse(user as any);
+    } else {
+      invalidateCurrentUserCache(emitEvents);
+      clearKylrixPulse();
+    }
+  } finally {
+    if (emitEvents) {
+      isApplyingCurrentUserSnapshot = false;
+    }
+  }
+
+  setState({
+    user,
+    isLoading: false,
+    isAuthenticating: false,
+    idmWindowOpen: false,
+    isAuthenticated: !!user,
+  });
 }
 
 async function attemptSilentAuth(): Promise<void> {
@@ -171,7 +183,7 @@ export async function initAuth() {
 
   const snapshot = getCurrentUserSnapshot();
   if (snapshot) {
-    syncCurrentUserState(snapshot as any);
+    applyCurrentUserState(snapshot as any, false);
     return;
   }
 
@@ -181,7 +193,7 @@ export async function initAuth() {
 }
 
 export function login(user: User) {
-  syncCurrentUserState(user);
+  applyCurrentUserState(user, true);
 }
 
 export async function logout() {
@@ -190,7 +202,7 @@ export async function logout() {
   } finally {
     idmWindowRef?.close?.();
     idmWindowRef = null;
-    syncCurrentUserState(null);
+    applyCurrentUserState(null, true);
   }
 }
 
@@ -200,7 +212,7 @@ export function openIDMWindow(pathname: string) {
 
   const localSession = getCurrentUserSnapshot();
   if (localSession) {
-    syncCurrentUserState(localSession as any);
+    applyCurrentUserState(localSession as any, false);
     return;
   }
 
@@ -213,7 +225,7 @@ export function openIDMWindow(pathname: string) {
   void attemptSilentAuth().then(() => {
     const session = getCurrentUserSnapshot();
     if (session) {
-      syncCurrentUserState(session as any);
+      applyCurrentUserState(session as any, false);
       return;
     }
 
@@ -258,7 +270,7 @@ export function dismissEmailVerificationReminder() {
 }
 
 export function onAuthSuccessFromAccounts(user: User) {
-  syncCurrentUserState(user);
+  applyCurrentUserState(user, true);
 }
 
 if (typeof window !== 'undefined') {

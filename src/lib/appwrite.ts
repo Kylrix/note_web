@@ -87,21 +87,25 @@ function readCurrentUserSnapshot() {
   }
 }
 
-function writeCurrentUserSnapshot(user: Users | null) {
+function writeCurrentUserSnapshot(user: Users | null, emitEvents = true) {
   if (!canUseStorage()) return;
   try {
     if (!user) {
       localStorage.removeItem(CURRENT_USER_CACHE_KEY);
-      window.dispatchEvent(new CustomEvent(CURRENT_USER_EVENT, { detail: null }));
-      window.dispatchEvent(new CustomEvent(SHARED_CURRENT_USER_EVENT, { detail: null }));
+      if (emitEvents) {
+        window.dispatchEvent(new CustomEvent(CURRENT_USER_EVENT, { detail: null }));
+        window.dispatchEvent(new CustomEvent(SHARED_CURRENT_USER_EVENT, { detail: null }));
+      }
       return;
     }
     localStorage.setItem(CURRENT_USER_CACHE_KEY, JSON.stringify({
       user,
       expiresAt: Date.now() + CURRENT_USER_CACHE_TTL,
     }));
-    window.dispatchEvent(new CustomEvent(CURRENT_USER_EVENT, { detail: user }));
-    window.dispatchEvent(new CustomEvent(SHARED_CURRENT_USER_EVENT, { detail: user }));
+    if (emitEvents) {
+      window.dispatchEvent(new CustomEvent(CURRENT_USER_EVENT, { detail: user }));
+      window.dispatchEvent(new CustomEvent(SHARED_CURRENT_USER_EVENT, { detail: user }));
+    }
   } catch {
     // best effort
   }
@@ -132,14 +136,14 @@ export function onCurrentUserChanged(listener: (user: Users | null) => void) {
   return () => window.removeEventListener(CURRENT_USER_EVENT, handler as EventListener);
 }
 
-export function setCurrentUserSnapshot(user: Users | null) {
+export function setCurrentUserSnapshot(user: Users | null, emitEvents = true) {
   currentUserCache = user
     ? {
         user,
         expiresAt: Date.now() + CURRENT_USER_CACHE_TTL,
       }
     : null;
-  writeCurrentUserSnapshot(user);
+  writeCurrentUserSnapshot(user, emitEvents);
 }
 
 // --- DIRECT ACCOUNT FETCH ---
@@ -163,12 +167,12 @@ export async function getCurrentUser(force = false): Promise<Users | null> {
         user: user as unknown as Users,
         expiresAt: Date.now() + CURRENT_USER_CACHE_TTL,
       };
-      writeCurrentUserSnapshot(user as unknown as Users);
+      writeCurrentUserSnapshot(user as unknown as Users, true);
       return user as unknown as Users;
     })
     .catch(() => {
       currentUserCache = null;
-      writeCurrentUserSnapshot(null);
+      writeCurrentUserSnapshot(null, true);
       return null;
     })
     .finally(() => {
@@ -178,10 +182,10 @@ export async function getCurrentUser(force = false): Promise<Users | null> {
   return currentUserInFlight;
 }
 
-export function invalidateCurrentUserCache() {
+export function invalidateCurrentUserCache(emitEvents = true) {
     currentUserCache = null;
     currentUserInFlight = null;
-    writeCurrentUserSnapshot(null);
+    writeCurrentUserSnapshot(null, emitEvents);
 }
 
 export class AppwriteService {
